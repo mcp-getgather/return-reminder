@@ -1,0 +1,61 @@
+{
+  "brand_id": "officedepot",
+  "brand_name": "Office Depot",
+  "logo_url": "https://upload.wikimedia.org/wikipedia/commons/e/e3/Office-depot-logo.png",
+  "dataTransform": {
+    "dataPath": "bundles.1.content",
+    "fieldMappings": [
+      {
+        "outputKey": "brand",
+        "sourcePath": "brand",
+        "defaultValue": "Office Depot"
+      },
+      {
+        "outputKey": "order_date",
+        "sourcePath": "order_date",
+        "defaultValue": "N/A",
+        "transform": "date"
+      },
+      {
+        "outputKey": "order_total",
+        "sourcePath": "total_amount",
+        "transform": "string",
+        "defaultValue": "$0.00"
+      },
+      {
+        "outputKey": "order_id",
+        "sourcePath": "order_number",
+        "defaultValue": "N/A"
+      },
+      {
+        "outputKey": "product_names",
+        "sourcePath": "product_names",
+        "defaultValue": "Unknown Product"
+      },
+      {
+        "outputKey": "image_urls",
+        "sourcePath": "image_url",
+        "transform": "image",
+        "defaultValue": ""
+      }
+    ]
+  },
+  "schema": [
+    {
+      "name": "email",
+      "type": "email",
+      "prompt": "Email"
+    },
+    {
+      "name": "password",
+      "type": "password",
+      "prompt": "Password"
+    },
+    {
+      "name": "dismiss_cookies,stay_signed_in,submit",
+      "type": "click",
+      "prompt": "Sign In",
+      "dependsOnFields": "email,password"
+    }
+  ]
+}

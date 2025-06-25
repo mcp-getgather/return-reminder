@@ -1,0 +1,64 @@
+{
+  "brand_id": "wayfair",
+  "brand_name": "Wayfair",
+  "logo_url": "https://upload.wikimedia.org/wikipedia/commons/0/0a/Wayfair_logo_with_tagline.png",
+  "dataTransform": {
+    "dataPath": "bundles.0.content.data.orderProductPagesByCustomer.nodes",
+    "fieldMappings": [
+      {
+        "outputKey": "brand",
+        "sourcePath": "brand",
+        "defaultValue": "Wayfair"
+      },
+      {
+        "outputKey": "order_id",
+        "sourcePath": "order.orderId",
+        "defaultValue": "N/A"
+      },
+      {
+        "outputKey": "order_date",
+        "sourcePath": "order.placedAt.displayDate",
+        "defaultValue": "N/A",
+        "transform": "date"
+      },
+      {
+        "outputKey": "order_total",
+        "sourcePath": "order.financials.currentTotal",
+        "transform": "currency",
+        "formatTemplate": "{symbol}{amount}",
+        "defaultValue": "$0.00"
+      },
+      {
+        "outputKey": "product_names",
+        "sourcePath": "product.productName",
+        "transform": "array",
+        "defaultValue": "Unknown Product"
+      },
+      {
+        "outputKey": "image_urls",
+        "sourcePath": "product.imageUrl",
+        "transform": "array",
+        "defaultValue": ""
+      }
+    ]
+  },
+  "schema": [
+    {
+      "name": "email",
+      "type": "email",
+      "prompt": "Email"
+    },
+    {
+      "name": "submit",
+      "type": "click",
+      "prompt": "Sign In with OTP",
+      "dependsOnFields": "email"
+    },
+    {
+      "name": "password_choice,submit,sign_in_with_password",
+      "type": "click",
+      "prompt": "Sign in with Password",
+      "dependsOnFields": "email"
+    }
+  ]
+}

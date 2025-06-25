@@ -1,0 +1,61 @@
+{
+  "brand_id": "nordstrom",
+  "brand_name": "Nordstrom",
+  "logo_url": "https://logos-world.net/wp-content/uploads/2022/01/Nordstrom-Symbol.png",
+  "dataTransform": {
+    "dataPath": "bundles.0.content.orders",
+    "fieldMappings": [
+      {
+        "outputKey": "brand",
+        "sourcePath": "brand",
+        "defaultValue": "Nordstrom"
+      },
+      {
+        "outputKey": "order_date",
+        "sourcePath": "orderDate",
+        "defaultValue": "N/A",
+        "transform": "date"
+      },
+      {
+        "outputKey": "order_total",
+        "sourcePath": "totalPrice",
+        "transform": "string",
+        "defaultValue": "$0.00"
+      },
+      {
+        "outputKey": "order_id",
+        "sourcePath": "orderId",
+        "defaultValue": "N/A"
+      },
+      {
+        "outputKey": "product_names",
+        "sourcePath": "status.0.items.productName",
+        "defaultValue": "Unknown Product"
+      },
+      {
+        "outputKey": "image_urls",
+        "sourcePath": "status.0.items.imageUrl",
+        "transform": "image",
+        "defaultValue": ""
+      }
+    ]
+  },
+  "schema": [
+    {
+      "name": "email",
+      "type": "email",
+      "prompt": "Email"
+    },
+    {
+      "name": "password",
+      "type": "password",
+      "prompt": "Password"
+    },
+    {
+      "name": "submit,sign_in",
+      "type": "click",
+      "prompt": "Sign In",
+      "dependsOnFields": "email,password"
+    }
+  ]
+}
