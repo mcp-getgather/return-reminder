@@ -25,7 +25,8 @@ export class ProxyService {
 
     if (
       ipAddress === 'unknown' ||
-      ipAddress === '127.0.0.1' ||
+      ipAddress.includes('127.0.0.1') ||
+      ipAddress.includes('localhost') ||
       ipAddress === '::1'
     ) {
       return null;
