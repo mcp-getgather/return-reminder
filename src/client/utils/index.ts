@@ -7,7 +7,7 @@ export const getDaysLeft = (returnDate: Date): number => {
 };
 
 export const downloadReturnRemindersCalendar = (
-  reminders: { brand: string; name: string; date: Date }[]
+  reminders: { brand: string; name: string; date?: Date }[]
 ) => {
   const formatDate = (date: Date) =>
     date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
@@ -16,8 +16,10 @@ export const downloadReturnRemindersCalendar = (
 
   const events = reminders
     .map((item, index) => {
-      const start = new Date(item.date);
-      const end = new Date(item.date.getTime() + 30 * 60 * 1000); // 30-minute reminder
+      const start = item.date ? new Date(item.date) : new Date();
+      const end = item.date
+        ? new Date(item.date.getTime() + 30 * 60 * 1000)
+        : new Date(start.getTime() + 30 * 60 * 1000); // 30-minute reminder
 
       return `
   BEGIN:VEVENT

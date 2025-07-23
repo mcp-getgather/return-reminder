@@ -34,7 +34,8 @@ export function ReturnReminder() {
   const sortedOrders = useMemo(() => {
     return orders.sort((a, b) => {
       return (
-        new Date(b.order_date).getTime() - new Date(a.order_date).getTime()
+        new Date(b.order_date ?? new Date()).getTime() -
+        new Date(a.order_date ?? new Date()).getTime()
       );
     });
   }, [orders]);
@@ -48,7 +49,7 @@ export function ReturnReminder() {
           const maxReturnDates: Date[] = [];
 
           order.product_names.forEach((_, index) => {
-            if (!order.max_return_dates?.[index]) {
+            if (!order.max_return_dates?.[index] && order.order_date) {
               maxReturnDates.push(
                 new Date(
                   new Date(order.order_date).setDate(
@@ -241,7 +242,7 @@ export function ReturnReminder() {
                         </p>
                       </div>
                       <p className="text-sm text-gray-600">
-                        Ordered: {order.order_date.toLocaleDateString()}
+                        Ordered: {order.order_date?.toLocaleDateString() ?? ''}
                         <span className="mx-2">•</span>
                         Total: {order.order_total}
                       </p>
