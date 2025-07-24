@@ -41,6 +41,17 @@ export function ReturnReminder() {
   }, [orders]);
 
   const handleSuccessConnect = (brandName: string, data: PurchaseHistory[]) => {
+    console.log('Received orders from', brandName, data);
+
+    try {
+      fetch('/log-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand: brandName, orders: data }),
+      }).catch((err) => console.error('Failed to log orders on server:', err));
+    } catch (err) {
+      console.error('Failed to initiate server logging:', err);
+    }
     setConnectedBrands((prev) => [...prev, brandName]);
     setOrders((prev) => {
       const combined = [
@@ -254,7 +265,9 @@ export function ReturnReminder() {
                 <div className="divide-y divide-gray-100">
                   {order.product_names.map((productName, index) => {
                     const maxReturnDate = order.max_return_dates?.[index];
-                    const productDaysLeft = maxReturnDate ? getDaysLeft(maxReturnDate) : 0;
+                    const productDaysLeft = maxReturnDate
+                      ? getDaysLeft(maxReturnDate)
+                      : 0;
                     const maxReturnDateStr = maxReturnDate
                       ? maxReturnDate.toISOString().slice(0, 10)
                       : '';

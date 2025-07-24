@@ -25,6 +25,17 @@ app.get('/health', (_, res) => {
   res.send({ status: 'OK', timestamp: Math.floor(Date.now() / 1000) });
 });
 
+// Endpoint to receive order logs from the client and print them on the server console
+app.post('/log-orders', (req, res) => {
+  // The client sends an object: { brand: string, orders: PurchaseHistory[] }
+  console.log(
+    'Received orders from client:',
+    JSON.stringify(req.body, null, 2)
+  );
+  // Respond with 204 No Content to signal successful receipt without extra payload
+  res.sendStatus(204);
+});
+
 // Proxy all requests to /getgather/* to the GetGather API
 app.all('/getgather/*name', async (req, res) => {
   const path = req.path.replace(/^\/getgather/, '');

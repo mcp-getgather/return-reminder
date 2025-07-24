@@ -699,6 +699,10 @@ export function Form({
       if (responseData.error) {
         dispatch({ type: 'SET_API_ERROR', payload: responseData.error });
       } else {
+        // Debug: log the raw response coming back from GetGather so we can inspect what the
+        // backend actually returned. This helps diagnose cases where we think we
+        // sent products but the UI shows none.
+        console.log('Gather API response:', responseData);
         dispatch({ type: 'SET_API_RESPONSE', payload: responseData });
       }
     } catch (error) {
@@ -822,10 +826,17 @@ export function Form({
 
   useEffect(() => {
     if (shouldShowExtractResult) {
+      // Debug: inspect the extract_result directly before any transformation.
+      console.log(
+        'Raw extract_result from Gather:',
+        apiResponse.extract_result
+      );
       const transformedData = transformData(
         apiResponse.extract_result,
         config.dataTransform
       );
+      // Debug: inspect transformed purchase history that will be added to state.
+      console.log('Transformed purchase history:', transformedData);
       onSuccessConnect(transformedData as unknown as PurchaseHistory[]);
     }
   }, [shouldShowExtractResult, apiResponse, config.dataTransform]);
