@@ -69,10 +69,19 @@ function getNestedValue(obj: any, path: string): any {
 }
 
 function parseReturnDate(returnDateStr: string) {
-  const match = returnDateStr.match(/closed on (\w+ \d+, \d+)/);
-  if (match) {
-    return new Date(match[1]);
+  // Match patterns like "closed on July 1, 2025" or "Eligible through July 12, 2025"
+  const closedMatch = returnDateStr.match(/closed on (\w+ \d+, \d+)/i);
+  if (closedMatch) {
+    return new Date(closedMatch[1]);
   }
+
+  const eligibleMatch = returnDateStr.match(
+    /eligible (?:through|until) (\w+ \d+, \d+)/i
+  );
+  if (eligibleMatch) {
+    return new Date(eligibleMatch[1]);
+  }
+
   return null;
 }
 
@@ -152,8 +161,17 @@ export function transformData(
   schema: DataTransformSchema
 ): { [key: string]: string | string[] | Date | Date[] }[] {
   try {
-    // Get the array of items to transform
-    const dataArray = getNestedValue(rawData, schema.dataPath);
+    // Determine where the data array is located.
+    let dataArray: unknown;
+
+    if (schema.dataPath && schema.dataPath.trim() !== '') {
+      dataArray = getNestedValue(rawData, schema.dataPath);
+    }
+
+    // Fallback: if dataPath is empty or did not resolve, but the rawData itself is an array, use it.
+    if (!Array.isArray(dataArray) && Array.isArray(rawData)) {
+      dataArray = rawData;
+    }
 
     if (!Array.isArray(dataArray)) {
       console.warn('Data path does not resolve to an array:', schema.dataPath);
