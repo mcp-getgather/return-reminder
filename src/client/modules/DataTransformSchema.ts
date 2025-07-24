@@ -1,6 +1,6 @@
 export type PurchaseHistory = {
   brand: string;
-  order_date: Date;
+  order_date?: Date;
   order_total: string;
   order_id: string;
   product_names: string[];

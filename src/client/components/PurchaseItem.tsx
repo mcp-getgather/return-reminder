@@ -2,8 +2,8 @@ interface PurchaseItemProps {
   id: string;
   name: string;
   retailer: string;
-  purchaseDate: Date;
-  returnByDate: Date;
+  purchaseDate?: Date;
+  returnByDate?: Date;
   isApproachingDeadline: boolean;
 }
 
@@ -15,7 +15,8 @@ export function PurchaseItem({
   isApproachingDeadline,
 }: PurchaseItemProps) {
   const daysLeft = Math.ceil(
-    (returnByDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+    (returnByDate?.getTime() ?? new Date().getTime()) -
+      (purchaseDate?.getTime() ?? new Date().getTime()) / (1000 * 60 * 60 * 24)
   );
 
   return (
@@ -31,7 +32,7 @@ export function PurchaseItem({
           <h3 className="font-medium text-gray-900">{name}</h3>
           <p className="text-sm text-gray-600">Purchased from {retailer}</p>
           <p className="text-sm text-gray-600">
-            Purchased on: {purchaseDate.toLocaleDateString()}
+            Purchased on: {purchaseDate?.toLocaleDateString()}
           </p>
         </div>
         <div
@@ -40,7 +41,7 @@ export function PurchaseItem({
           }`}
         >
           <p className="font-medium">Return by:</p>
-          <p className="text-sm">{returnByDate.toLocaleDateString()}</p>
+          <p className="text-sm">{returnByDate?.toLocaleDateString()}</p>
           <p
             className={`text-sm font-medium ${
               daysLeft <= 3 ? 'text-red-600' : 'text-gray-600'
