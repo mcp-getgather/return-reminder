@@ -42,6 +42,21 @@ app.all('/getgather/*name', async (req, res) => {
   await proxyService.reverseProxy(req, res, path);
 });
 
+try {
+  console.log('Checking GETGATHER_URL:', settings.GETGATHER_URL);
+  const response = await fetch(settings.GETGATHER_URL);
+  if (response.status === 200) {
+    console.log('✓ GETGATHER_URL is reachable');
+  } else {
+    console.warn(`⚠ GETGATHER_URL returned status ${response.status}`);
+  }
+} catch (error) {
+  console.error(
+    '✗ GETGATHER_URL is not reachable:',
+    error instanceof Error ? error.message : String(error)
+  );
+}
+
 if (settings.NODE_ENV === 'development') {
   ViteExpress.listen(app, 3000, () =>
     console.log('Server is listening on port http://localhost:3000')
