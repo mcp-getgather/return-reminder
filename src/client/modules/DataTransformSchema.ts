@@ -91,7 +91,7 @@ function parseReturnDate(returnDateStr: string) {
 function applyTransform(
   value: any,
   mapping: DataFieldMapping
-): string | string[] | Date {
+): string | string[] | Date | null {
   if (value === undefined || value === null) {
     return mapping.defaultValue || '';
   }
@@ -135,6 +135,9 @@ function applyTransform(
           return v;
         });
       }
+      if (!value) {
+        return null;
+      }
 
       if (typeof value === 'object' && value.displayDate) {
         return String(value.displayDate);
@@ -159,7 +162,7 @@ function applyTransform(
 export function transformData(
   rawData: any,
   schema: DataTransformSchema
-): { [key: string]: string | string[] | Date | Date[] }[] {
+): { [key: string]: string | string[] | Date | Date[] | null }[] {
   try {
     // Determine where the data array is located.
     let dataArray: unknown;
@@ -181,7 +184,7 @@ export function transformData(
     // Transform each item according to field mappings
     return dataArray.map((item: any) => {
       const transformedItem: {
-        [key: string]: string | string[] | Date | Date[];
+        [key: string]: string | string[] | Date | Date[] | null;
       } = {};
       schema.fieldMappings.forEach((mapping) => {
         const rawValue = getNestedValue(item, mapping.sourcePath);

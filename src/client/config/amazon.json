@@ -32,7 +32,6 @@
       {
         "outputKey": "order_date",
         "sourcePath": "order_date",
-        "defaultValue": "N/A",
         "transform": "date"
       },
       {

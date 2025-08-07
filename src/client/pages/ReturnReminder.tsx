@@ -263,6 +263,9 @@ export function ReturnReminder() {
 
                 {/* Order Products */}
                 <div className="divide-y divide-gray-100">
+                  {order.product_names.length === 0 && (
+                    <div className="p-4">Product details not available</div>
+                  )}
                   {order.product_names.map((productName, index) => {
                     const maxReturnDate = order.max_return_dates?.[index];
                     const productDaysLeft = maxReturnDate
