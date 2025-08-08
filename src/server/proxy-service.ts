@@ -130,7 +130,7 @@ export class ProxyService {
         headers: upstreamHeaders,
         params: request.query,
         data: contentToSend,
-        timeout: 3000000, // 5 minutes
+        timeout: 300_000, // 5 minutes
         responseType: 'arraybuffer',
         validateStatus: () => true, // Don't throw on non-2xx status codes
       };
