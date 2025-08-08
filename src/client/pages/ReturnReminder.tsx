@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { DataSource } from '../components/DataSource';
 import amazon from '../config/amazon.json';
+import amazonca from '../config/amazonca.json';
 import wayfair from './../config/wayfair.json';
 import officedepot from '../config/officedepot.json';
 // import nordstrom from '../config/nordstrom.json';
@@ -16,12 +17,14 @@ import {
 } from '../utils';
 
 const amazonConfig = amazon as BrandConfig;
+const amazoncaConfig = amazonca as BrandConfig;
 const wayfairConfig = wayfair as BrandConfig;
 const officedepotConfig = officedepot as BrandConfig;
 // const nordstromConfig = nordstrom as BrandConfig;
 
 const BRANDS: Array<BrandConfig> = [
   amazonConfig,
+  amazoncaConfig,
   officedepotConfig,
   // nordstromConfig,
   wayfairConfig,
