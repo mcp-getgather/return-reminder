@@ -9,7 +9,7 @@ echo "Waiting for tailscaled..."
 sleep 5
 
 echo "Authenticating with Tailscale..."
-/app/tailscale up --authkey="${TAILSCALE_AUTHKEY}" --hostname=return-reminder-tailscale --accept-routes
+/app/tailscale up --authkey="${TAILSCALE_AUTHKEY}" --hostname=return-reminder --accept-routes
 
 # CRITICAL: Wait for connection
 sleep 3
