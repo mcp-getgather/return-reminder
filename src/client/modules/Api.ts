@@ -12,7 +12,7 @@ export type Prompt = {
 
 export type Choice = {
   name: string;
-  prompts: Prompt[];
+  groups: Prompt[];
   message: string | null;
 };
 

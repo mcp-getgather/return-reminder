@@ -382,14 +382,14 @@ function FollowUpFormView({
           )}
           <div className="home-follow-up-choices gap-4 flex flex-col">
             {followUpChoices.map((choice: Choice, index: number) => {
-              if (choice.prompts && choice.prompts.length > 0) {
+              if (choice.groups && choice.groups.length > 0) {
                 return (
                   <FormRenderer
                     autoFocus={index === 0}
                     key={choice.name}
-                    schema={choice.prompts}
+                    schema={choice.groups}
                     onSubmit={(e) =>
-                      handleFormSubmission(choice.prompts, e, true, choice.name)
+                      handleFormSubmission(choice.groups, e, true, choice.name)
                     }
                     values={followUpFormValues}
                     onChange={updateFollowUpFormValues}
@@ -456,14 +456,14 @@ export function Form({
 
       // Find which choice contains the clicked button
       for (const choice of apiResponseChoices) {
-        if (choice.prompts && Array.isArray(choice.prompts)) {
-          const clickedPrompt = choice.prompts.find(
+        if (choice.groups && Array.isArray(choice.groups)) {
+          const clickedPrompt = choice.groups.find(
             (prompt: Prompt) => prompt.name === clickedButtonName
           );
 
           if (clickedPrompt) {
-            // Set ALL prompts in this choice to "true"
-            choice.prompts.forEach((prompt: Prompt) => {
+            // Set ALL groups in this choice to "true"
+            choice.groups.forEach((prompt: Prompt) => {
               if (prompt.type === 'click') {
                 const names = prompt.name.split(',');
                 names.forEach((name: string) => {
@@ -511,7 +511,7 @@ export function Form({
   // Add function to detect if we have radio button choices
   const hasRadioButtonChoices = (choices: Choice[]): boolean => {
     return choices.some((choice) =>
-      choice.prompts?.some(
+      choice.groups?.some(
         (prompt) =>
           prompt.name.endsWith('-radio-btn') ||
           prompt.name.endsWith('mfa_choice') ||
@@ -522,7 +522,7 @@ export function Form({
 
   // Add function to get the action button from a choice
   const getActionButton = (choice: Choice): Prompt | null => {
-    const buttonFromChoice = choice.prompts?.find(
+    const buttonFromChoice = choice.groups?.find(
       (prompt) =>
         prompt.type === 'click' &&
         (!prompt.name.endsWith('-radio-btn') ||
@@ -543,7 +543,7 @@ export function Form({
   // Add function to get radio button from a choice
   const getRadioButton = (choice: Choice): Prompt | null => {
     return (
-      choice.prompts?.find(
+      choice.groups?.find(
         (prompt) =>
           prompt.name.endsWith('-radio-btn') ||
           prompt.name.endsWith('mfa_choice') ||
@@ -565,15 +565,15 @@ export function Form({
 
     let currentSchema = config.schema;
     if (isFollowUpForm) {
-      if (apiResponse?.state?.prompt?.choices?.[0]?.prompts) {
-        currentSchema = apiResponse.state.prompt.choices[0].prompts;
+      if (apiResponse?.state?.prompt?.choices?.[0]?.groups) {
+        currentSchema = apiResponse.state.prompt.choices[0].groups;
       }
       if (choiceName) {
         const choice = apiResponse?.state?.prompt?.choices?.find(
           (choice) => choice.name === choiceName
         );
-        if (choice?.prompts) {
-          currentSchema = choice.prompts;
+        if (choice?.groups) {
+          currentSchema = choice.groups;
         }
       }
     }
@@ -779,10 +779,10 @@ export function Form({
       const choices = apiResponse.state.prompt.choices;
       let allPrompts: BrandConfig['schema'] = [];
 
-      // Collect all prompts from all choices
+      // Collect all groups from all choices
       choices.forEach((choice: Choice) => {
-        if (choice.prompts && Array.isArray(choice.prompts)) {
-          allPrompts = allPrompts.concat(choice.prompts);
+        if (choice.groups && Array.isArray(choice.groups)) {
+          allPrompts = allPrompts.concat(choice.groups);
         }
       });
 
