@@ -44,6 +44,21 @@ GETGATHER_URL=http://localhost:8000
 
 ## Development
 
+### Using Docker
+
+Use Docker or Podman to pull the container image and run it:
+
+```bash
+docker run -p 3000:3000 \
+  -e GETGATHER_URL=your_local_mcp_getgather_url \
+  -e GETGATHER_API_KEY=your_api_key \
+  ghcr.io/mcp-getgather/return-reminder:latest
+```
+
+Then open [localhost:3000](http://localhost:3000) to access the application.
+
+### Local Development
+
 ```bash
 npm install
 npm run dev
@@ -71,6 +86,7 @@ npm run dev
    ```
 
    This will:
+
    - Create a new app on Fly.io
    - Use the existing `fly.toml` configuration
    - Build and deploy using the existing Dockerfile
