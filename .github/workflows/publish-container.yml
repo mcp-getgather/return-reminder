@@ -3,6 +3,9 @@ name: Publish Container Image
 on:
   push:
     branches: [main]
+  # TODO: remove after testing
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 env:
