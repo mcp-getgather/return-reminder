@@ -44,6 +44,25 @@ GETGATHER_URL=http://localhost:8000
 
 ## Development
 
+### Using Docker
+
+For proper MaxMind geolocation, we will use `--network=host` to get real client IPs:
+
+```bash
+docker run --network=host \
+  -e GETGATHER_URL=your_local_mcp_getgather_url \
+  -e GETGATHER_API_KEY=your_api_key \
+  -e MAXMIND_ACCOUNT_ID=your_maxmind_account_id \
+  -e MAXMIND_LICENSE_KEY=your_maxmind_license_key \
+  ghcr.io/mcp-getgather/return-reminder:latest
+```
+
+If you cannot access the application on macOS, update Docker Desktop to version 4.34+ and enable host networking in Settings → Resources → Network.
+
+Then open [localhost:3000](http://localhost:3000) to access the application.
+
+### Local Development
+
 ```bash
 npm install
 npm run dev
@@ -71,6 +90,7 @@ npm run dev
    ```
 
    This will:
+
    - Create a new app on Fly.io
    - Use the existing `fly.toml` configuration
    - Build and deploy using the existing Dockerfile
