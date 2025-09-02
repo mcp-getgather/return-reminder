@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { SignInDialog } from './SignInDialog';
 import type { BrandConfig } from '../modules/Config';
 import type { PurchaseHistory } from '../modules/DataTransformSchema';
