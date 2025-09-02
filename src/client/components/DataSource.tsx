@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SignInDialog } from './SignInDialog';
 import type { BrandConfig } from '../modules/Config';
 import type { PurchaseHistory } from '../modules/DataTransformSchema';
@@ -8,6 +8,13 @@ interface DataSourceProps {
   disabled?: boolean;
   brandConfig: BrandConfig;
   isConnected?: boolean;
+  authCompleted?: boolean;
+  onAuthCompleteHandled?: () => void;
+}
+
+interface AppConfig {
+  useHostedLink: boolean;
+  brand: string;
 }
 
 export function DataSource({
@@ -15,11 +22,82 @@ export function DataSource({
   disabled,
   brandConfig,
   isConnected,
+  authCompleted,
+  onAuthCompleteHandled,
 }: DataSourceProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [dialogMode, setDialogMode] = useState<'form' | 'hosted-link'>('form');
 
-  const handleConnect = () => {
-    setIsDialogOpen(true);
+  useEffect(() => {
+    // Fetch app configuration on component mount
+    fetch('/internal/config')
+      .then(res => res.json())
+      .then((config: AppConfig) => {
+        setAppConfig(config);
+        setIsLoadingConfig(false);
+      })
+      .catch(error => {
+        console.error('Failed to fetch app config:', error);
+        setIsLoadingConfig(false);
+      });
+  }, []);
+
+  // Close dialog when authentication completes
+  useEffect(() => {
+    if (authCompleted && isDialogOpen && dialogMode === 'hosted-link') {
+      setIsDialogOpen(false);
+      onAuthCompleteHandled?.();
+    }
+  }, [authCompleted, isDialogOpen, dialogMode, onAuthCompleteHandled]);
+
+  const handleConnect = async () => {
+    if (appConfig?.useHostedLink) {
+      // Use hosted link flow
+      try {
+        const response = await fetch('/internal/hosted-link/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            brand_id: brandConfig.brand_id,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create hosted link');
+        }
+
+        const data = await response.json();
+        console.log('Hosted link created:', data);
+
+        // Store link_id in localStorage to check status later
+        localStorage.setItem('hosted_link_id', data.link_id);
+        localStorage.setItem('hosted_link_brand', brandConfig.brand_name);
+
+        // Open hosted link in new tab instead of redirecting current page
+        window.open(
+          data.hosted_link_url,
+          '_blank',
+          'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
+        );
+
+        // Show dialog with instructions instead of login form
+        setDialogMode('hosted-link');
+        setIsDialogOpen(true);
+      } catch (error) {
+        console.error('Error creating hosted link:', error);
+        // Fall back to dialog if hosted link fails
+        setDialogMode('form');
+        setIsDialogOpen(true);
+      }
+    } else {
+      // Use traditional form dialog flow
+      setDialogMode('form');
+      setIsDialogOpen(true);
+    }
   };
 
   const handleSuccessConnect = (data: PurchaseHistory[]) => {
@@ -69,13 +147,18 @@ export function DataSource({
             </div>
           ) : (
             <button
-              disabled={disabled}
+              disabled={disabled || isLoadingConfig}
               onClick={handleConnect}
               className={`px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors ${
-                disabled || isConnected ? 'opacity-50 cursor-not-allowed' : ''
+                disabled || isConnected || isLoadingConfig ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
-              Connect
+              {isLoadingConfig 
+                ? 'Loading...' 
+                : appConfig?.useHostedLink 
+                  ? `Connect with ${brandConfig.brand_name}` 
+                  : 'Connect'
+              }
             </button>
           )}
         </div>
@@ -86,6 +169,7 @@ export function DataSource({
         onClose={() => setIsDialogOpen(false)}
         onSuccessConnect={handleSuccessConnect}
         brandConfig={brandConfig}
+        mode={dialogMode}
       />
     </>
   );

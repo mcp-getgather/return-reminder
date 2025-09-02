@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { DataSource } from '../components/DataSource';
 import amazon from '../config/amazon.json';
 import amazonca from '../config/amazonca.json';
@@ -15,6 +15,7 @@ import {
   getDaysLeft,
   getEarliestReturnDate,
 } from '../utils';
+import { transformData } from '../modules/DataTransformSchema';
 
 const amazonConfig = amazon as BrandConfig;
 const amazoncaConfig = amazonca as BrandConfig;
@@ -33,6 +34,7 @@ const BRANDS: Array<BrandConfig> = [
 export function ReturnReminder() {
   const [orders, setOrders] = useState<PurchaseHistory[]>([]);
   const [connectedBrands, setConnectedBrands] = useState<string[]>([]);
+  const [authCompleted, setAuthCompleted] = useState<string | null>(null);
 
   const sortedOrders = useMemo(() => {
     return orders.sort((a, b) => {
@@ -42,6 +44,62 @@ export function ReturnReminder() {
       );
     });
   }, [orders]);
+
+  // Check for hosted link status on page load
+  useEffect(() => {
+    const checkHostedLinkStatus = async () => {
+      const linkId = localStorage.getItem('hosted_link_id');
+      const brandName = localStorage.getItem('hosted_link_brand');
+      
+      if (!linkId || !brandName) return;
+
+      try {
+        console.log('Checking hosted link status for:', linkId);
+        
+        const response = await fetch(`/internal/hosted-link/status/${linkId}`);
+        if (!response.ok) {
+          throw new Error('Failed to get link status');
+        }
+
+        const linkStatus = await response.json();
+        console.log('Link status:', linkStatus);
+
+        if (linkStatus.status === 'FINISHED' && linkStatus.extract_result) {
+          // Find the brand config to get data transform settings
+          const brandConfig = BRANDS.find(b => b.brand_name === brandName);
+          if (brandConfig) {
+            const transformedData = transformData(
+              linkStatus.extract_result,
+              brandConfig.dataTransform
+            );
+            console.log('Transformed data from hosted link:', transformedData);
+            
+            handleSuccessConnect(brandName, transformedData as PurchaseHistory[]);
+          }
+          
+          // Signal that auth completed for this brand
+          setAuthCompleted(brandName);
+          
+          // Clear localStorage
+          localStorage.removeItem('hosted_link_id');
+          localStorage.removeItem('hosted_link_brand');
+        } else if (linkStatus.status === 'FAILED') {
+          console.error('Hosted link authentication failed:', linkStatus.message);
+          // Clear localStorage on failure
+          localStorage.removeItem('hosted_link_id');
+          localStorage.removeItem('hosted_link_brand');
+        }
+        // If status is still in progress, we don't need to do anything
+      } catch (error) {
+        console.error('Error checking hosted link status:', error);
+        // Clear localStorage on error
+        localStorage.removeItem('hosted_link_id');
+        localStorage.removeItem('hosted_link_brand');
+      }
+    };
+
+    checkHostedLinkStatus();
+  }, []);
 
   const handleSuccessConnect = (brandName: string, data: PurchaseHistory[]) => {
     console.log('Received orders from', brandName, data);
@@ -197,6 +255,8 @@ export function ReturnReminder() {
               //   !brandConfig.is_mandatory && !connectedBrands.includes('Amazon')
               // }
               isConnected={connectedBrands.includes(brandConfig.brand_name)}
+              authCompleted={authCompleted === brandConfig.brand_name}
+              onAuthCompleteHandled={() => setAuthCompleted(null)}
             />
           ))}
         </div>
