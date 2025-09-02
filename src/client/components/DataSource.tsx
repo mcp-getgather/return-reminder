@@ -51,11 +51,7 @@ export function DataSource({
           localStorage.setItem('hosted_link_id', data.link_id);
           localStorage.setItem('hosted_link_brand', brandConfig.brand_name);
 
-          window.open(
-            data.hosted_link_url,
-            '_blank',
-            'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
-          );
+          window.open(data.hosted_link_url, '_blank');
 
           setDialogMode('hosted-link');
           setIsDialogOpen(true);
