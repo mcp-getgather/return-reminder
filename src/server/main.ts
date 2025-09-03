@@ -43,7 +43,7 @@ const createProxy = (path: string) =>
     },
   });
 
-const proxyPaths = ['/link', '/assets', '/static/assets', '/api'];
+const proxyPaths = ['/link', '/__assets', '/__static/assets', '/api'];
 
 proxyPaths.forEach((path) => {
   app.use(path, createProxy(path));
