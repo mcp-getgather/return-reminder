@@ -10,10 +10,6 @@ interface DataSourceProps {
   isConnected?: boolean;
 }
 
-interface AppConfig {
-  useHostedLink: boolean;
-}
-
 export function DataSource({
   onSuccessConnect,
   disabled,
@@ -21,53 +17,39 @@ export function DataSource({
   isConnected,
 }: DataSourceProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<'form' | 'hosted-link'>('form');
 
   const handleConnect = async () => {
-    // Fetch config when button is clicked
     try {
-      const configResponse = await fetch('/internal/config');
-      const appConfig: AppConfig = await configResponse.json();
+      const response = await fetch('/internal/hosted-link/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          brand_id: brandConfig.brand_id,
+        }),
+      });
 
-      if (appConfig.useHostedLink) {
-        try {
-          const response = await fetch('/internal/hosted-link/create', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              brand_id: brandConfig.brand_id,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to create hosted link');
-          }
-
-          const data = await response.json();
-          console.log('Hosted link created:', data);
-
-          localStorage.setItem('hosted_link_id', data.link_id);
-          localStorage.setItem('hosted_link_brand', brandConfig.brand_name);
-
-          window.open(data.hosted_link_url, '_blank');
-
-          setDialogMode('hosted-link');
-          setIsDialogOpen(true);
-        } catch (error) {
-          console.error('Error creating hosted link:', error);
-          setDialogMode('form');
-          setIsDialogOpen(true);
-        }
-      } else {
-        setDialogMode('form');
-        setIsDialogOpen(true);
+      if (!response.ok) {
+        throw new Error('Failed to create hosted link');
       }
-    } catch (error) {
-      console.error('Error fetching config:', error);
-      setDialogMode('form');
+
+      const data = await response.json();
+      console.log('Hosted link created:', data);
+
+      localStorage.setItem('hosted_link_id', data.link_id);
+      localStorage.setItem('hosted_link_brand', brandConfig.brand_name);
+
+      window.open(
+        data.hosted_link_url,
+        '_blank',
+        'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
+      );
+
       setIsDialogOpen(true);
+    } catch (error) {
+      console.error('Error creating hosted link:', error);
+      alert('Failed to create authentication link. Please try again.');
     }
   };
 
@@ -135,7 +117,6 @@ export function DataSource({
         onClose={() => setIsDialogOpen(false)}
         onSuccessConnect={handleSuccessConnect}
         brandConfig={brandConfig}
-        mode={dialogMode}
       />
     </>
   );

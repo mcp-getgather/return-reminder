@@ -2,19 +2,12 @@ import { Request, Response } from 'express';
 import { settings } from '../config.js';
 
 export const handleLinkCreate = async (req: Request, res: Response) => {
-  if (!settings.USE_HOSTED_LINK) {
-    return res.status(400).json({ error: 'Hosted link mode is not enabled' });
-  }
-
   try {
-    const { brand_id = 'amazon', redirect_url } = req.body;
+    const { brand_id } = req.body;
 
     const protocol = req.protocol;
     const host = req.get('host') || 'localhost:3000';
     const appBaseUrl = `${protocol}://${host}`;
-
-    // Set redirect URL to return to our app after auth
-    const finalRedirectUrl = redirect_url || appBaseUrl;
 
     const baseUrl = settings.GETGATHER_URL.replace(/\/$/, '');
     const targetUrl = `${baseUrl}/api/link/create`;
@@ -26,11 +19,7 @@ export const handleLinkCreate = async (req: Request, res: Response) => {
 
     const data = {
       brand_id,
-      redirect_url: finalRedirectUrl,
-      url_lifetime_seconds: 900,
     };
-
-    console.log('Link creation request', data);
 
     const upstreamResponse = await fetch(targetUrl, {
       method: 'POST',

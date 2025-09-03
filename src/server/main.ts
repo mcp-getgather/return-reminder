@@ -9,7 +9,6 @@ import ViteExpress from 'vite-express';
 import { ipBlocker } from './blocker.js';
 import { ProxyService } from './proxy-service.js';
 import { handleLinkCreate, handleLinkStatus } from './handlers/link-handler.js';
-import { handleConfigGet } from './handlers/config-handler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,7 +53,6 @@ app.get('/health', (_, res) => {
   res.send({ status: 'OK', timestamp: Math.floor(Date.now() / 1000) });
 });
 
-app.get('/internal/config', handleConfigGet);
 app.post('/internal/hosted-link/create', handleLinkCreate);
 app.get('/internal/hosted-link/status/:link_id', handleLinkStatus);
 

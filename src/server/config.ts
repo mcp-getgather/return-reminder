@@ -9,7 +9,6 @@ export interface Settings {
   GETGATHER_API_KEY: string;
   MAXMIND_ACCOUNT_ID: string;
   MAXMIND_LICENSE_KEY: string;
-  USE_HOSTED_LINK: boolean;
 }
 
 export const settings: Settings = {
@@ -18,5 +17,4 @@ export const settings: Settings = {
   GETGATHER_API_KEY: process.env.GETGATHER_API_KEY || '',
   MAXMIND_ACCOUNT_ID: process.env.MAXMIND_ACCOUNT_ID || '',
   MAXMIND_LICENSE_KEY: process.env.MAXMIND_LICENSE_KEY || '',
-  USE_HOSTED_LINK: process.env.USE_HOSTED_LINK === 'true',
 };

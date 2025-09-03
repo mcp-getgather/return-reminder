@@ -1,14 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { BrandConfig } from '../modules/Config';
-import type { PurchaseHistory } from '../modules/DataTransformSchema';
-import { Form } from './Form';
+import { transformData, type PurchaseHistory } from '../modules/DataTransformSchema';
 
 interface SignInDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccessConnect: (data: PurchaseHistory[]) => void;
   brandConfig: BrandConfig;
-  mode?: 'form' | 'hosted-link';
 }
 
 export function SignInDialog({
@@ -16,9 +14,10 @@ export function SignInDialog({
   onClose,
   onSuccessConnect,
   brandConfig,
-  mode = 'form',
 }: SignInDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const [pollingError, setPollingError] = useState<string | null>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -26,10 +25,95 @@ export function SignInDialog({
 
     if (isOpen) {
       dialog.showModal();
+      
+      // Start polling for completion  
+      const linkId = localStorage.getItem('hosted_link_id');
+      if (linkId && !isPolling) {
+        setIsPolling(true);
+        setPollingError(null);
+        
+        // Poll for profile ID
+        const pollForProfileId = async () => {
+          let attempts = 0;
+          const maxAttempts = 120; // 2 minute max
+          
+          while (attempts < maxAttempts) {
+            try {
+              const response = await fetch(`/internal/hosted-link/status/${linkId}`, {
+                method: 'GET',
+                headers: {
+                  'accept': 'application/json',
+                  'Content-Type': 'application/json',
+                },
+              });
+
+              if (response.ok) {
+                const linkStatus = await response.json();
+                console.log(`Polling attempt ${attempts + 1}:`, linkStatus);
+                
+                if (linkStatus.status === 'completed' && linkStatus.profile_id) {
+                  return linkStatus.profile_id;
+                }
+              }
+            } catch (error) {
+              console.log('Polling attempt failed:', error);
+            }
+
+            attempts++;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
+          throw new Error('Authentication timed out. Please try again.');
+        };
+        
+        // Execute the polling and auth flow
+        pollForProfileId()
+          .then(profileId => {
+            // Clear localStorage
+            localStorage.removeItem('hosted_link_id');
+            localStorage.removeItem('hosted_link_brand');
+            
+            // Get purchase history using profile ID
+            return fetch(`/getgather/api/auth/${brandConfig.brand_id}`, {
+              method: 'POST',
+              headers: {
+                'accept': 'application/json',
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                profile_id: profileId,
+                extract: true,
+              })
+            });
+          })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then(auth => {
+            // Transform the data on the client side
+            const transformedData = transformData(
+              auth.extract_result,
+              brandConfig.dataTransform
+            ) as PurchaseHistory[];
+            
+            onSuccessConnect(transformedData);
+            onClose();
+          })
+          .catch(error => {
+            console.error('Authentication flow failed:', error);
+            setPollingError(error.message || 'Authentication failed. Please try again.');
+            setIsPolling(false);
+          });
+      }
     } else {
       dialog.close();
+      setIsPolling(false);
+      setPollingError(null);
     }
-  }, [isOpen]);
+  }, [isOpen, brandConfig, onSuccessConnect, onClose, isPolling]);
 
   return (
     <dialog
@@ -56,28 +140,47 @@ export function SignInDialog({
             />
           </div>
 
-          {mode === 'hosted-link' ? (
-            <>
-              <h3 className="text-lg font-medium text-center leading-6 text-gray-900 mb-4">
-                Authentication in Progress
-              </h3>
-              <div className="text-center">
+          <h3 className="text-lg font-medium text-center leading-6 text-gray-900 mb-4">
+            Authentication in Progress
+          </h3>
+          <div className="text-center">
+            {pollingError ? (
+              <>
+                <p className="text-red-600 mb-4">
+                  {pollingError}
+                </p>
+                <button
+                  onClick={() => {
+                    // Clear everything and close
+                    localStorage.removeItem('hosted_link_id');
+                    localStorage.removeItem('hosted_link_brand');
+                    setPollingError(null);
+                    setIsPolling(false);
+                    onClose();
+                  }}
+                  className="px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  Close
+                </button>
+              </>
+            ) : (
+              <>
                 <p className="text-gray-600 mb-4">
-                  Please complete the authentication process in the opened tab to connect your {brandConfig.brand_name} account.
+                  Please complete the authentication process in the opened tab
+                  to connect your {brandConfig.brand_name} account.
                 </p>
                 <p className="text-sm text-gray-500">
-                  This dialog will close automatically when authentication is complete.
+                  This dialog will close automatically when authentication is
+                  complete.
                 </p>
-              </div>
-            </>
-          ) : (
-            <>
-              <h3 className="text-lg font-medium text-center leading-6 text-gray-900 mb-4">
-                Sign in to {brandConfig.brand_name}
-              </h3>
-              <Form config={brandConfig} onSuccessConnect={onSuccessConnect} />
-            </>
-          )}
+                {isPolling && (
+                  <div className="mt-4">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </dialog>
