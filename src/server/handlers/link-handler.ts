@@ -47,8 +47,6 @@ export const handleLinkCreate = async (req: Request, res: Response) => {
     }
 
     res.json(responseBody);
-
-    console.log('Link created successfully');
   } catch (error) {
     console.error('Link creation failed:', error);
     if (!res.headersSent) {
@@ -79,8 +77,6 @@ export const handleLinkStatus = async (req: Request, res: Response) => {
       accept: 'application/json',
     };
 
-    console.log('Link status request', { link_id });
-
     const upstreamResponse = await fetch(targetUrl, {
       method: 'GET',
       headers,
@@ -97,8 +93,6 @@ export const handleLinkStatus = async (req: Request, res: Response) => {
 
     const responseBody = await upstreamResponse.json();
     res.json(responseBody);
-
-    console.log('Link status retrieved successfully');
   } catch (error) {
     console.error('Link status retrieval failed:', error);
     if (!res.headersSent) {

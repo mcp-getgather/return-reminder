@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BrandConfig } from '../modules/Config';
-import { transformData, type PurchaseHistory } from '../modules/DataTransformSchema';
+import {
+  transformData,
+  type PurchaseHistory,
+} from '../modules/DataTransformSchema';
+import { link } from 'fs';
 
 interface SignInDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccessConnect: (data: PurchaseHistory[]) => void;
   brandConfig: BrandConfig;
+  linkId: string | null;
 }
 
 export function SignInDialog({
@@ -14,6 +19,7 @@ export function SignInDialog({
   onClose,
   onSuccessConnect,
   brandConfig,
+  linkId,
 }: SignInDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [isPolling, setIsPolling] = useState(false);
@@ -25,33 +31,37 @@ export function SignInDialog({
 
     if (isOpen) {
       dialog.showModal();
-      
-      // Start polling for completion  
-      const linkId = localStorage.getItem('hosted_link_id');
+
+      // Start polling for completion
       if (linkId && !isPolling) {
         setIsPolling(true);
         setPollingError(null);
-        
+
         // Poll for profile ID
         const pollForProfileId = async () => {
           let attempts = 0;
           const maxAttempts = 120; // 2 minute max
-          
+
           while (attempts < maxAttempts) {
             try {
-              const response = await fetch(`/internal/hosted-link/status/${linkId}`, {
-                method: 'GET',
-                headers: {
-                  'accept': 'application/json',
-                  'Content-Type': 'application/json',
-                },
-              });
+              const response = await fetch(
+                `/internal/hosted-link/status/${linkId}`,
+                {
+                  method: 'GET',
+                  headers: {
+                    accept: 'application/json',
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
 
               if (response.ok) {
                 const linkStatus = await response.json();
-                console.log(`Polling attempt ${attempts + 1}:`, linkStatus);
-                
-                if (linkStatus.status === 'completed' && linkStatus.profile_id) {
+
+                if (
+                  linkStatus.status === 'completed' &&
+                  linkStatus.profile_id
+                ) {
                   return linkStatus.profile_id;
                 }
               }
@@ -60,51 +70,49 @@ export function SignInDialog({
             }
 
             attempts++;
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           }
-          
+
           throw new Error('Authentication timed out. Please try again.');
         };
-        
+
         // Execute the polling and auth flow
         pollForProfileId()
-          .then(profileId => {
-            // Clear localStorage
-            localStorage.removeItem('hosted_link_id');
-            localStorage.removeItem('hosted_link_brand');
-            
+          .then((profileId) => {
             // Get purchase history using profile ID
             return fetch(`/getgather/api/auth/${brandConfig.brand_id}`, {
               method: 'POST',
               headers: {
-                'accept': 'application/json',
+                accept: 'application/json',
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
                 profile_id: profileId,
                 extract: true,
-              })
+              }),
             });
           })
-          .then(response => {
+          .then((response) => {
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
             }
             return response.json();
           })
-          .then(auth => {
+          .then((auth) => {
             // Transform the data on the client side
             const transformedData = transformData(
               auth.extract_result,
               brandConfig.dataTransform
             ) as PurchaseHistory[];
-            
+
             onSuccessConnect(transformedData);
             onClose();
           })
-          .catch(error => {
+          .catch((error) => {
             console.error('Authentication flow failed:', error);
-            setPollingError(error.message || 'Authentication failed. Please try again.');
+            setPollingError(
+              error.message || 'Authentication failed. Please try again.'
+            );
             setIsPolling(false);
           });
       }
@@ -113,7 +121,7 @@ export function SignInDialog({
       setIsPolling(false);
       setPollingError(null);
     }
-  }, [isOpen, brandConfig, onSuccessConnect, onClose, isPolling]);
+  }, [isOpen, brandConfig, onSuccessConnect, onClose, isPolling, linkId]);
 
   return (
     <dialog
@@ -146,14 +154,10 @@ export function SignInDialog({
           <div className="text-center">
             {pollingError ? (
               <>
-                <p className="text-red-600 mb-4">
-                  {pollingError}
-                </p>
+                <p className="text-red-600 mb-4">{pollingError}</p>
                 <button
                   onClick={() => {
-                    // Clear everything and close
-                    localStorage.removeItem('hosted_link_id');
-                    localStorage.removeItem('hosted_link_brand');
+                    // Clear error and close
                     setPollingError(null);
                     setIsPolling(false);
                     onClose();

@@ -17,6 +17,7 @@ export function DataSource({
   isConnected,
 }: DataSourceProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [linkId, setLinkId] = useState<string | null>(null);
 
   const handleConnect = async () => {
     try {
@@ -35,10 +36,8 @@ export function DataSource({
       }
 
       const data = await response.json();
-      console.log('Hosted link created:', data);
 
-      localStorage.setItem('hosted_link_id', data.link_id);
-      localStorage.setItem('hosted_link_brand', brandConfig.brand_name);
+      setLinkId(data.link_id);
 
       window.open(
         data.hosted_link_url,
@@ -55,6 +54,7 @@ export function DataSource({
 
   const handleSuccessConnect = (data: PurchaseHistory[]) => {
     setIsDialogOpen(false);
+    setLinkId(null);
     onSuccessConnect(data);
   };
 
@@ -114,9 +114,13 @@ export function DataSource({
 
       <SignInDialog
         isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
+        onClose={() => {
+          setIsDialogOpen(false);
+          setLinkId(null);
+        }}
         onSuccessConnect={handleSuccessConnect}
         brandConfig={brandConfig}
+        linkId={linkId}
       />
     </>
   );
