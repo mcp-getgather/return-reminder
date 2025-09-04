@@ -3,24 +3,6 @@
   "brand_name": "Amazon",
   "logo_url": "https://i.pinimg.com/originals/01/ca/da/01cada77a0a7d326d85b7969fe26a728.jpg",
   "is_mandatory": true,
-  "schema": [
-    {
-      "name": "email",
-      "type": "email",
-      "prompt": "Email"
-    },
-    {
-      "name": "password",
-      "type": "password",
-      "prompt": "Password"
-    },
-    {
-      "name": "continue,sign_in",
-      "type": "click",
-      "prompt": "Sign In",
-      "dependsOnFields": "email"
-    }
-  ],
   "dataTransform": {
     "dataPath": "bundles.1.content",
     "fieldMappings": [
