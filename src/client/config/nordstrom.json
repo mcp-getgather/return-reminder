@@ -39,5 +39,23 @@
         "defaultValue": ""
       }
     ]
-  }
+  },
+  "schema": [
+    {
+      "name": "email",
+      "type": "email",
+      "prompt": "Email"
+    },
+    {
+      "name": "password",
+      "type": "password",
+      "prompt": "Password"
+    },
+    {
+      "name": "submit,sign_in",
+      "type": "click",
+      "prompt": "Sign In",
+      "dependsOnFields": "email,password"
+    }
+  ]
 }
