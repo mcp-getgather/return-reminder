@@ -17,13 +17,44 @@ export function DataSource({
   isConnected,
 }: DataSourceProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [linkId, setLinkId] = useState<string | null>(null);
 
-  const handleConnect = () => {
-    setIsDialogOpen(true);
+  const handleConnect = async () => {
+    try {
+      const response = await fetch('/internal/hosted-link/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          brand_id: brandConfig.brand_id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create hosted link');
+      }
+
+      const data = await response.json();
+
+      setLinkId(data.link_id);
+
+      window.open(
+        data.hosted_link_url,
+        '_blank',
+        'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
+      );
+
+      setIsDialogOpen(true);
+    } catch (error) {
+      console.error('Error creating hosted link:', error);
+      alert('Failed to create authentication link. Please try again.');
+    }
   };
 
   const handleSuccessConnect = (data: PurchaseHistory[]) => {
     setIsDialogOpen(false);
+    setLinkId(null);
     onSuccessConnect(data);
   };
 
@@ -83,9 +114,13 @@ export function DataSource({
 
       <SignInDialog
         isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
+        onClose={() => {
+          setIsDialogOpen(false);
+          setLinkId(null);
+        }}
         onSuccessConnect={handleSuccessConnect}
         brandConfig={brandConfig}
+        linkId={linkId}
       />
     </>
   );

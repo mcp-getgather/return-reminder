@@ -41,24 +41,5 @@
         "defaultValue": ""
       }
     ]
-  },
-  "schema": [
-    {
-      "name": "email",
-      "type": "email",
-      "prompt": "Email"
-    },
-    {
-      "name": "submit",
-      "type": "click",
-      "prompt": "Sign In with OTP",
-      "dependsOnFields": "email"
-    },
-    {
-      "name": "password_choice,submit,sign_in_with_password",
-      "type": "click",
-      "prompt": "Sign in with Password",
-      "dependsOnFields": "email"
-    }
-  ]
+  }
 }
