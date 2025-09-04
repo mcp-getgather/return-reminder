@@ -95,7 +95,7 @@ if (settings.NODE_ENV === 'development') {
   );
 } else {
   app.use(express.static(path.join(__dirname, 'dist')));
-  app.get('*', (req, res) => {
+  app.get('*name', (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
   });
   app.listen(3000, () => {
