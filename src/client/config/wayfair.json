@@ -3,7 +3,7 @@
   "brand_name": "Wayfair",
   "logo_url": "https://upload.wikimedia.org/wikipedia/commons/0/0a/Wayfair_logo_with_tagline.png",
   "dataTransform": {
-    "dataPath": "bundles.0.content.data.orderProductPagesByCustomer.nodes",
+    "dataPath": "extract_result.0.content.data.orderProductPagesByCustomer.nodes",
     "fieldMappings": [
       {
         "outputKey": "brand",

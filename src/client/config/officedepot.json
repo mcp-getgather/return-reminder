@@ -3,7 +3,7 @@
   "brand_name": "Office Depot",
   "logo_url": "https://upload.wikimedia.org/wikipedia/commons/e/e3/Office-depot-logo.png",
   "dataTransform": {
-    "dataPath": "bundles.1.content",
+    "dataPath": "extract_result.0.content",
     "fieldMappings": [
       {
         "outputKey": "brand",

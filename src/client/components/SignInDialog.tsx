@@ -36,32 +36,29 @@ export function SignInDialog({
         setIsPolling(true);
         setPollingError(null);
 
-        // Poll for profile ID
-        const pollForProfileId = async () => {
+        // Poll for authentication completion
+        const pollForAuth = async () => {
           let attempts = 0;
           const maxAttempts = 120; // 2 minute max
 
           while (attempts < maxAttempts) {
             try {
-              const response = await fetch(
-                `/internal/hosted-link/status/${linkId}`,
-                {
-                  method: 'GET',
-                  headers: {
-                    accept: 'application/json',
-                    'Content-Type': 'application/json',
-                  },
-                }
-              );
+              const response = await fetch('/internal/mcp/poll-auth', {
+                method: 'POST',
+                headers: {
+                  accept: 'application/json',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  link_id: linkId,
+                }),
+              });
 
               if (response.ok) {
-                const linkStatus = await response.json();
-
-                if (
-                  linkStatus.status === 'completed' &&
-                  linkStatus.profile_id
-                ) {
-                  return linkStatus.profile_id;
+                const result = await response.json();
+                
+                if (result.success && result.data?.status === 'FINISHED') {
+                  return true;
                 }
               }
             } catch (error) {
@@ -75,19 +72,18 @@ export function SignInDialog({
           throw new Error('Authentication timed out. Please try again.');
         };
 
-        // Execute the polling and auth flow
-        pollForProfileId()
-          .then((profileId) => {
-            // Get purchase history using profile ID
-            return fetch(`/getgather/api/auth/${brandConfig.brand_id}`, {
+        // Execute the polling and data retrieval flow
+        pollForAuth()
+          .then(() => {
+            // Authentication complete, now retrieve the data
+            return fetch('/internal/mcp/retrieve-data', {
               method: 'POST',
               headers: {
                 accept: 'application/json',
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                profile_id: profileId,
-                extract: true,
+                brand_id: brandConfig.brand_id,
               }),
             });
           })
@@ -97,10 +93,14 @@ export function SignInDialog({
             }
             return response.json();
           })
-          .then((auth) => {
+          .then((result) => {
+            if (!result.success) {
+              throw new Error(result.error || 'Failed to retrieve data');
+            }
+            
             // Transform the data on the client side
             const transformedData = transformData(
-              auth.extract_result,
+              result.data,
               brandConfig.dataTransform
             ) as PurchaseHistory[];
 
