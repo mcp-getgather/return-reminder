@@ -9,6 +9,7 @@ import ViteExpress from 'vite-express';
 import { ipBlocker } from './blocker.js';
 import { ProxyService } from './proxy-service.js';
 import { handleLinkCreate, handleLinkStatus } from './handlers/link-handler.js';
+import { mcpService } from './mcp-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -53,6 +54,87 @@ app.get('/health', (_, res) => {
   res.send({ status: 'OK', timestamp: Math.floor(Date.now() / 1000) });
 });
 
+app.post('/internal/mcp/retrieve-data', async (req, res) => {
+  try {
+    const { brand_id } = req.body;
+
+    console.log('Retrieve data request for brand_id:', brand_id);
+
+    if (!brand_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'brand_id is required',
+      });
+    }
+
+    const structuredContent = await mcpService.retrieveData(brand_id);
+
+    if (!structuredContent) {
+      throw new Error('MCP tool returned no data');
+    }
+
+    // Check if we got a URL (authentication required) or direct data
+    if (structuredContent?.url) {
+      // Rewrite URL to use app host instead of GETGATHER_URL
+      const protocol = req.protocol;
+      const host = req.get('host') || 'localhost:3000';
+      const appHost = `${protocol}://${host}`;
+      const serverUrl = mcpService.getServerUrl();
+
+      console.log(
+        'Rewriting URL from',
+        structuredContent.url,
+        'with serverUrl',
+        serverUrl,
+        'to appHost',
+        appHost
+      );
+
+      if (structuredContent.url.includes(serverUrl)) {
+        structuredContent.url = structuredContent.url.replace(
+          serverUrl,
+          appHost
+        );
+      }
+    }
+
+    res.json({
+      success: true,
+      data: structuredContent,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.post('/internal/mcp/poll-auth', async (req, res) => {
+  try {
+    const { link_id } = req.body;
+
+    if (!link_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'link_id is required',
+      });
+    }
+
+    const structuredContent = await mcpService.pollAuth(link_id);
+
+    res.json({
+      success: true,
+      data: structuredContent,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
 app.post('/internal/hosted-link/create', handleLinkCreate);
 app.get('/internal/hosted-link/status/:link_id', handleLinkStatus);
 
@@ -74,31 +156,43 @@ app.use('/getgather', async (req, res) => {
   await proxyService.reverseProxy(req, res, fullPath);
 });
 
-try {
-  console.log('Checking GETGATHER_URL:', settings.GETGATHER_URL);
-  const response = await fetch(settings.GETGATHER_URL);
-  if (response.status === 200) {
-    console.log('✓ GETGATHER_URL is reachable');
-  } else {
-    console.warn(`⚠ GETGATHER_URL returned status ${response.status}`);
+async function startServer() {
+  try {
+    console.log('Checking GETGATHER_URL:', settings.GETGATHER_URL);
+    const response = await fetch(settings.GETGATHER_URL);
+    if (response.status === 200) {
+      console.log('✓ GETGATHER_URL is reachable');
+    } else {
+      console.warn(`⚠ GETGATHER_URL returned status ${response.status}`);
+    }
+  } catch (error) {
+    console.error(
+      '✗ GETGATHER_URL is not reachable:',
+      error instanceof Error ? error.message : String(error)
+    );
   }
-} catch (error) {
-  console.error(
-    '✗ GETGATHER_URL is not reachable:',
-    error instanceof Error ? error.message : String(error)
-  );
+
+  try {
+    console.log('Initializing MCP client...');
+    await mcpService.getClient();
+  } catch (error) {
+    console.error('Failed to initialize MCP client:', error);
+    console.warn('Server will start but MCP features may not work');
+  }
+
+  if (settings.NODE_ENV === 'development') {
+    ViteExpress.listen(app, 3000, () =>
+      console.log('Server is listening on port http://localhost:3000')
+    );
+  } else {
+    app.use(express.static(path.join(__dirname, 'dist')));
+    app.get('*name', (req, res) => {
+      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    });
+    app.listen(3000, () => {
+      console.log('Server is running at http://localhost:3000');
+    });
+  }
 }
 
-if (settings.NODE_ENV === 'development') {
-  ViteExpress.listen(app, 3000, () =>
-    console.log('Server is listening on port http://localhost:3000')
-  );
-} else {
-  app.use(express.static(path.join(__dirname, 'dist')));
-  app.get('*name', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-  });
-  app.listen(3000, () => {
-    console.log('Server is running at http://localhost:3000');
-  });
-}
+startServer();
