@@ -62,6 +62,34 @@ export class MCPService {
     }
   }
 
+  private async resetAndInitializeClient(sessionId: string): Promise<Client> {
+    try {
+      if (this.client[sessionId]) {
+        await this.client[sessionId].close().catch(() => {});
+      }
+    } finally {
+      this.client[sessionId] = null;
+    }
+
+    return this.initializeClient(sessionId);
+  }
+
+  private async callToolWithReconnect(params: {
+    name: string;
+    arguments?: Record<string, unknown>;
+    sessionId: string;
+  }) {
+    try {
+      const client = await this.getClient(params.sessionId);
+      return await client.callTool(params);
+    } catch (err) {
+      console.warn('callTool failed, reconnecting with MCP Client...', err);
+      await this.resetAndInitializeClient(params.sessionId);
+      const client = await this.getClient(params.sessionId);
+      return await client.callTool(params);
+    }
+  }
+
   async getClient(sessionId: string): Promise<Client> {
     if (!this.client[sessionId]) {
       await this.initializeClient(sessionId);
@@ -81,15 +109,15 @@ export class MCPService {
   }
 
   async retrieveData(brandId: string, sessionId: string) {
-    const client = await this.getClient(sessionId);
     const toolName = this.getMCPToolName(brandId);
 
     console.log(`Calling MCP tool: ${toolName} for brand: ${brandId}`);
 
     try {
-      const result = await client.callTool({
+      const result = await this.callToolWithReconnect({
         name: toolName,
         arguments: {},
+        sessionId: sessionId,
       });
 
       console.log(
@@ -104,21 +132,13 @@ export class MCPService {
   }
 
   async pollAuth(linkId: string, sessionId: string) {
-    const client = await this.getClient(sessionId);
-
     console.log(`Polling auth status for link_id: ${linkId}`);
 
-    const result = await client.callTool(
-      {
-        name: 'poll_auth',
-        arguments: { link_id: linkId },
-      },
-      undefined,
-      {
-        timeout: 6000000,
-        maxTotalTimeout: 6000000,
-      }
-    );
+    const result = await this.callToolWithReconnect({
+      name: 'poll_auth',
+      arguments: { link_id: linkId },
+      sessionId: sessionId,
+    });
 
     return result.structuredContent;
   }
