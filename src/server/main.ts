@@ -10,6 +10,7 @@ import { ipBlocker } from './blocker.js';
 import { ProxyService } from './proxy-service.js';
 import { handleLinkCreate, handleLinkStatus } from './handlers/link-handler.js';
 import { mcpService } from './mcp-service.js';
+import session, { SessionData } from 'express-session';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,6 +55,26 @@ app.get('/health', (_, res) => {
   res.send({ status: 'OK', timestamp: Math.floor(Date.now() / 1000) });
 });
 
+app.use(
+  session({
+    secret: '1234567890',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV == 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  })
+);
+app.use((req, res, next) => {
+  if (!('createdAt' in req.session)) {
+    (req.session as unknown as SessionData & { createdAt: number }).createdAt =
+      Date.now();
+  }
+  next();
+});
+
 app.post('/internal/mcp/retrieve-data', async (req, res) => {
   try {
     const { brand_id } = req.body;
@@ -67,7 +88,10 @@ app.post('/internal/mcp/retrieve-data', async (req, res) => {
       });
     }
 
-    const structuredContent = await mcpService.retrieveData(brand_id);
+    const structuredContent = await mcpService.retrieveData(
+      brand_id,
+      req.sessionID
+    );
 
     if (!structuredContent) {
       throw new Error('MCP tool returned no data');
@@ -121,7 +145,7 @@ app.post('/internal/mcp/poll-auth', async (req, res) => {
       });
     }
 
-    const structuredContent = await mcpService.pollAuth(link_id);
+    const structuredContent = await mcpService.pollAuth(link_id, req.sessionID);
 
     res.json({
       success: true,
@@ -170,14 +194,6 @@ async function startServer() {
       '✗ GETGATHER_URL is not reachable:',
       error instanceof Error ? error.message : String(error)
     );
-  }
-
-  try {
-    console.log('Initializing MCP client...');
-    await mcpService.getClient();
-  } catch (error) {
-    console.error('Failed to initialize MCP client:', error);
-    console.warn('Server will start but MCP features may not work');
   }
 
   if (settings.NODE_ENV === 'development') {

@@ -11,7 +11,7 @@ const BRAND_MCP_TOOLS: Record<string, string> = {
 
 export class MCPService {
   private static instance: MCPService | null = null;
-  private client: Client | null = null;
+  private client: Record<string, Client | null> = {};
   private initPromise: Promise<Client> | null = null;
   private serverUrl: string;
   private mcpUrl: string;
@@ -28,8 +28,8 @@ export class MCPService {
     return MCPService.instance;
   }
 
-  private async initializeClient(): Promise<Client> {
-    if (this.client) return this.client;
+  private async initializeClient(sessionId: string): Promise<Client> {
+    if (this.client[sessionId]) return this.client[sessionId];
     if (this.initPromise) return this.initPromise;
 
     this.initPromise = (async () => {
@@ -38,10 +38,19 @@ export class MCPService {
         { capabilities: {} }
       );
 
-      const transport = new StreamableHTTPClientTransport(new URL(this.mcpUrl));
+      const transport = new StreamableHTTPClientTransport(
+        new URL(this.mcpUrl),
+        {
+          requestInit: {
+            headers: {
+              'x-getgather-custom-app': 'return-reminder',
+            },
+          },
+        }
+      );
       await client.connect(transport);
 
-      this.client = client;
+      this.client[sessionId] = client;
       console.log('MCP client initialized successfully');
       return client;
     })();
@@ -53,14 +62,14 @@ export class MCPService {
     }
   }
 
-  async getClient(): Promise<Client> {
-    if (!this.client) {
-      await this.initializeClient();
+  async getClient(sessionId: string): Promise<Client> {
+    if (!this.client[sessionId]) {
+      await this.initializeClient(sessionId);
     }
-    if (!this.client) {
+    if (!this.client[sessionId]) {
       throw new Error('MCP client initialization failed');
     }
-    return this.client;
+    return this.client[sessionId];
   }
 
   getMCPToolName(brandId: string): string {
@@ -71,8 +80,8 @@ export class MCPService {
     return toolName;
   }
 
-  async retrieveData(brandId: string) {
-    const client = await this.getClient();
+  async retrieveData(brandId: string, sessionId: string) {
+    const client = await this.getClient(sessionId);
     const toolName = this.getMCPToolName(brandId);
 
     console.log(`Calling MCP tool: ${toolName} for brand: ${brandId}`);
@@ -94,8 +103,8 @@ export class MCPService {
     }
   }
 
-  async pollAuth(linkId: string) {
-    const client = await this.getClient();
+  async pollAuth(linkId: string, sessionId: string) {
+    const client = await this.getClient(sessionId);
 
     console.log(`Polling auth status for link_id: ${linkId}`);
 
