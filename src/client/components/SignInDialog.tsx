@@ -56,7 +56,7 @@ export function SignInDialog({
 
               if (response.ok) {
                 const result = await response.json();
-                
+
                 if (result.success && result.data?.status === 'FINISHED') {
                   return true;
                 }
@@ -97,7 +97,7 @@ export function SignInDialog({
             if (!result.success) {
               throw new Error(result.error || 'Failed to retrieve data');
             }
-            
+
             // Transform the data on the client side
             const transformedData = transformData(
               result.data,
@@ -120,7 +120,7 @@ export function SignInDialog({
       setIsPolling(false);
       setPollingError(null);
     }
-  }, [isOpen, brandConfig, onSuccessConnect, onClose, isPolling, linkId]);
+  }, [isOpen, brandConfig, onSuccessConnect, onClose, linkId]);
 
   return (
     <dialog
