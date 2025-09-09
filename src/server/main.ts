@@ -61,7 +61,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV == 'production',
+      secure: settings.NODE_ENV === 'production',
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
@@ -195,11 +195,8 @@ try {
   );
 }
 
-if (settings.NODE_ENV === 'development') {
-  ViteExpress.listen(app, 3000, () =>
-    console.log('Server is listening on port http://localhost:3000')
-  );
-} else {
+if (settings.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
   app.use(express.static(path.join(__dirname, 'dist')));
   app.get('*name', (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
@@ -207,4 +204,8 @@ if (settings.NODE_ENV === 'development') {
   app.listen(3000, () => {
     console.log('Server is running at http://localhost:3000');
   });
+} else {
+  ViteExpress.listen(app, 3000, () =>
+    console.log('Server is listening on port http://localhost:3000')
+  );
 }
