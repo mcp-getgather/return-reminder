@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { SignInDialog } from './SignInDialog';
 import type { BrandConfig } from '../modules/Config';
-import type { PurchaseHistory } from '../modules/DataTransformSchema';
+import {
+  transformData,
+  type PurchaseHistory,
+} from '../modules/DataTransformSchema';
 
 interface DataSourceProps {
   onSuccessConnect: (data: PurchaseHistory[]) => void;
@@ -18,10 +21,12 @@ export function DataSource({
 }: DataSourceProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [linkId, setLinkId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleConnect = async () => {
+    setIsLoading(true);
     try {
-      const response = await fetch('/internal/hosted-link/create', {
+      const response = await fetch('/internal/mcp/retrieve-data', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -32,29 +37,51 @@ export function DataSource({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create hosted link');
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
-      const data = await response.json();
+      const result = await response.json();
 
-      setLinkId(data.link_id);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to retrieve data');
+      }
 
-      window.open(
-        data.hosted_link_url,
-        '_blank',
-        'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
-      );
+      const data = result.data;
 
-      setIsDialogOpen(true);
+      if (data.url && data.link_id) {
+        setLinkId(data.link_id);
+
+        window.open(
+          data.url,
+          '_blank',
+          'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
+        );
+
+        setIsDialogOpen(true);
+        setIsLoading(false);
+      } else if (data) {
+        const transformedData = transformData(
+          data,
+          brandConfig.dataTransform
+        ) as PurchaseHistory[];
+
+        handleSuccessConnect(transformedData);
+      } else {
+        throw new Error('Unexpected response format');
+      }
     } catch (error) {
-      console.error('Error creating hosted link:', error);
-      alert('Failed to create authentication link. Please try again.');
+      alert(
+        `Failed to retrieve data: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      setIsLoading(false);
     }
   };
 
   const handleSuccessConnect = (data: PurchaseHistory[]) => {
     setIsDialogOpen(false);
     setLinkId(null);
+    setIsLoading(false);
     onSuccessConnect(data);
   };
 
@@ -100,13 +127,20 @@ export function DataSource({
             </div>
           ) : (
             <button
-              disabled={disabled}
+              disabled={disabled || isLoading}
               onClick={handleConnect}
-              className={`px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors ${
-                disabled || isConnected ? 'opacity-50 cursor-not-allowed' : ''
+              className={`px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2 ${
+                disabled || isConnected || isLoading ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
-              Connect
+              {isLoading ? (
+                <>
+                  <div className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                  <span>Loading...</span>
+                </>
+              ) : (
+                'Connect'
+              )}
             </button>
           )}
         </div>
