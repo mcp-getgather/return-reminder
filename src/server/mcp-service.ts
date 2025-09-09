@@ -1,4 +1,9 @@
+import {
+  CallToolResultSchema,
+  CompatibilityCallToolResultSchema,
+} from '@modelcontextprotocol/sdk/types.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { settings } from './config.js';
 
@@ -74,19 +79,25 @@ export class MCPService {
     return this.initializeClient(sessionId);
   }
 
-  private async callToolWithReconnect(params: {
-    name: string;
-    arguments?: Record<string, unknown>;
-    sessionId: string;
-  }) {
+  private async callToolWithReconnect(
+    params: {
+      name: string;
+      arguments?: Record<string, unknown>;
+      sessionId: string;
+    },
+    resultSchema?:
+      | typeof CallToolResultSchema
+      | typeof CompatibilityCallToolResultSchema,
+    options?: RequestOptions
+  ) {
     try {
       const client = await this.getClient(params.sessionId);
-      return await client.callTool(params);
+      return await client.callTool(params, resultSchema, options);
     } catch (err) {
       console.warn('callTool failed, reconnecting with MCP Client...', err);
       await this.resetAndInitializeClient(params.sessionId);
       const client = await this.getClient(params.sessionId);
-      return await client.callTool(params);
+      return await client.callTool(params, resultSchema, options);
     }
   }
 
@@ -134,11 +145,18 @@ export class MCPService {
   async pollAuth(linkId: string, sessionId: string) {
     console.log(`Polling auth status for link_id: ${linkId}`);
 
-    const result = await this.callToolWithReconnect({
-      name: 'poll_auth',
-      arguments: { link_id: linkId },
-      sessionId: sessionId,
-    });
+    const result = await this.callToolWithReconnect(
+      {
+        name: 'poll_auth',
+        arguments: { link_id: linkId },
+        sessionId: sessionId,
+      },
+      undefined,
+      {
+        timeout: 6000000,
+        maxTotalTimeout: 6000000,
+      }
+    );
 
     return result.structuredContent;
   }
