@@ -145,7 +145,10 @@ app.post('/internal/mcp/poll-auth', async (req, res) => {
       });
     }
 
-    const structuredContent = await mcpService.pollAuth(link_id, req.sessionID);
+    const structuredContent = await mcpService.pollSignin(
+      link_id,
+      req.sessionID
+    );
 
     res.json({
       success: true,
