@@ -142,12 +142,12 @@ export class MCPService {
     }
   }
 
-  async pollAuth(linkId: string, sessionId: string) {
+  async pollSignin(linkId: string, sessionId: string) {
     console.log(`Polling auth status for link_id: ${linkId}`);
 
     const result = await this.callToolWithReconnect(
       {
-        name: 'poll_auth',
+        name: 'poll_signin',
         arguments: { link_id: linkId },
         sessionId: sessionId,
       },
