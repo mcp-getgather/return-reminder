@@ -23,8 +23,8 @@ export type DataFieldMapping = {
 };
 
 export type DataTransformSchema = {
-  /** JSONPath to the array of items to transform - can be string or array of fallback paths */
-  dataPath: string | string[];
+  /** JSONPath to the array of items to transform */
+  dataPath: string;
   /** Field mappings for transformation */
   fieldMappings: DataFieldMapping[];
 };
@@ -167,20 +167,11 @@ export function transformData(
     // Determine where the data array is located.
     let dataArray: unknown;
 
-    const dataPaths = Array.isArray(schema.dataPath)
-      ? schema.dataPath
-      : [schema.dataPath];
-
-    for (const path of dataPaths) {
-      if (path && path.trim() !== '') {
-        dataArray = getNestedValue(rawData, path);
-        if (Array.isArray(dataArray)) {
-          break;
-        }
-      }
+    if (schema.dataPath && schema.dataPath.trim() !== '') {
+      dataArray = getNestedValue(rawData, schema.dataPath);
     }
 
-    // Fallback: if no dataPath resolved, but the rawData itself is an array, use it.
+    // Fallback: if dataPath is empty or did not resolve, but the rawData itself is an array, use it.
     if (!Array.isArray(dataArray) && Array.isArray(rawData)) {
       dataArray = rawData;
     }
