@@ -63,7 +63,11 @@ export function ReturnReminder() {
           const maxReturnDates: Date[] = [];
 
           order.product_names.forEach((_, index) => {
-            if (!order.max_return_dates?.[index] && order.order_date) {
+            if (
+              !order.max_return_dates?.[index] &&
+              order.order_date &&
+              !isNaN(new Date(order.order_date).getTime())
+            ) {
               maxReturnDates.push(
                 new Date(
                   new Date(order.order_date).setDate(
@@ -254,7 +258,11 @@ export function ReturnReminder() {
                         </p>
                       </div>
                       <p className="text-sm text-gray-600">
-                        Ordered: {order.order_date?.toLocaleDateString() ?? ''}
+                        Ordered:{' '}
+                        {order.order_date &&
+                        !isNaN(new Date(order.order_date).getTime())
+                          ? order.order_date.toLocaleDateString()
+                          : (order.order_date as unknown as string)}
                         <span className="mx-2">•</span>
                         Total: {order.order_total}
                       </p>
