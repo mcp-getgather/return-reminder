@@ -7,11 +7,27 @@ import { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { settings } from './config.js';
 
-const BRAND_MCP_TOOLS: Record<string, string> = {
-  amazon: 'amazon_get_purchase_history',
-  amazonca: 'amazonca_get_purchase_history',
-  officedepot: 'officedepot_get_order_history',
-  wayfair: 'wayfair_get_order_history',
+type MCPTool = {
+  name: string;
+  args?: (results: unknown[]) => Record<string, unknown>[];
+};
+
+const BRAND_MCP_TOOLS: Record<string, MCPTool[]> = {
+  amazon: [{ name: 'amazon_get_purchase_history' }],
+  amazonca: [{ name: 'amazonca_get_purchase_history' }],
+  officedepot: [{ name: 'officedepot_get_order_history' }],
+  wayfair: [
+    { name: 'wayfair_get_order_history' },
+    {
+      name: 'wayfair_get_order_history_details',
+      args: (results) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const orders = (results[0] as any)?.purchase_history || [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return orders.map((order: any) => ({ order_id: order.order_id }));
+      },
+    },
+  ],
 };
 
 export class MCPService {
@@ -111,33 +127,70 @@ export class MCPService {
     return this.client[sessionId];
   }
 
-  getMCPToolName(brandId: string): string {
-    const toolName = BRAND_MCP_TOOLS[brandId];
-    if (!toolName) {
+  getMCPTools(brandId: string): MCPTool[] {
+    const tools = BRAND_MCP_TOOLS[brandId];
+    if (!tools) {
       throw new Error(`No MCP tool configured for brand: ${brandId}`);
     }
-    return toolName;
+    return tools;
   }
 
   async retrieveData(brandId: string, sessionId: string) {
-    const toolName = this.getMCPToolName(brandId);
-
-    console.log(`Calling MCP tool: ${toolName} for brand: ${brandId}`);
+    const tools = this.getMCPTools(brandId);
+    const results: unknown[] = [];
+    let mergedContent = {} as Record<string, unknown>;
 
     try {
-      const result = await this.callToolWithReconnect({
-        name: toolName,
-        arguments: {},
-        sessionId: sessionId,
-      });
+      for (let i = 0; i < tools.length; i++) {
+        console.log(`Calling MCP tool: ${tools[i].name} for brand: ${brandId}`);
 
-      console.log(
-        `MCP tool response for ${brandId}:`,
-        JSON.stringify(result.structuredContent, null, 2)
-      );
-      return result.structuredContent as Record<string, string>;
+        const toolArgs = tools[i].args?.(results) || [{}];
+
+        // Call tool multiple times, once for each arg set
+        const allResults = [];
+        for (const argSet of toolArgs) {
+          const result = await this.callToolWithReconnect({
+            name: tools[i].name,
+            arguments: argSet,
+            sessionId: sessionId,
+          });
+
+          console.log(
+            `MCP tool response for ${brandId}:`,
+            JSON.stringify(result.structuredContent, null, 2)
+          );
+
+          allResults.push(result.structuredContent);
+        }
+
+        const combinedResult = {} as Record<string, unknown>;
+        for (const result of allResults) {
+          const resultObj = result as Record<string, unknown>;
+          for (const [key, value] of Object.entries(resultObj)) {
+            if (Array.isArray(value)) {
+              if (!combinedResult[key]) {
+                combinedResult[key] = [];
+              }
+              (combinedResult[key] as unknown[]).push(...value);
+            } else {
+              combinedResult[key] = value;
+            }
+          }
+        }
+
+        results.push(combinedResult);
+        mergedContent = {
+          ...mergedContent,
+          ...combinedResult,
+        };
+      }
+
+      return mergedContent as Record<string, string>;
     } catch (error) {
-      console.error(`Error calling MCP tool ${toolName}:`, error);
+      console.error(
+        `Error calling MCP tool ${tools.map((t) => t.name)}:`,
+        error
+      );
       throw error;
     }
   }
