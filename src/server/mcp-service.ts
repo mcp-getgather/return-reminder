@@ -21,7 +21,9 @@ const BRAND_MCP_TOOLS: Record<string, MCPTool[]> = {
     {
       name: 'wayfair_get_order_history_details',
       args: (results) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const orders = (results[0] as any)?.purchase_history || [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return orders.map((order: any) => ({ order_id: order.order_id }));
       },
     },
@@ -222,13 +224,16 @@ export class MCPService {
   private wireOrderHistoryWithDetails(
     mergedContent: Record<string, unknown>
   ): Record<string, unknown> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const history = mergedContent.purchase_history as any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const details = mergedContent.purchase_history_details as any[];
 
     if (!Array.isArray(history) || !Array.isArray(details)) {
       return mergedContent;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const detailsByOrderId = new Map<string, any[]>();
     for (const detail of details) {
       if (detail.order_id) {
