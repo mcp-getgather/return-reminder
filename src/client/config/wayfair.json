@@ -31,14 +31,12 @@
       },
       {
         "outputKey": "product_names",
-        "sourcePath": "product",
-        "transform": "array",
+        "sourcePath": "product_names",
         "defaultValue": "Unknown Product"
       },
       {
         "outputKey": "image_urls",
-        "sourcePath": "image_url",
-        "transform": "array",
+        "sourcePath": "image_urls",
         "defaultValue": ""
       }
     ]

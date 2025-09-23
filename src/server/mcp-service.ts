@@ -199,6 +199,13 @@ export class MCPService {
         };
       }
 
+      if (
+        mergedContent.purchase_history &&
+        mergedContent.purchase_history_details
+      ) {
+        mergedContent = this.wireOrderHistoryWithDetails(mergedContent);
+      }
+
       return mergedContent as Record<string, string>;
     } catch (error) {
       Logger.error('MCP tool call failed', error as Error, {
@@ -229,6 +236,55 @@ export class MCPService {
     );
 
     return result.structuredContent;
+  }
+
+  private wireOrderHistoryWithDetails(
+    mergedContent: Record<string, unknown>
+  ): Record<string, unknown> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const history = mergedContent.purchase_history as any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const details = mergedContent.purchase_history_details as any[];
+
+    if (!Array.isArray(history) || !Array.isArray(details)) {
+      return mergedContent;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const detailsByOrderId = new Map<string, any[]>();
+    for (const detail of details) {
+      if (detail.order_id) {
+        if (!detailsByOrderId.has(detail.order_id)) {
+          detailsByOrderId.set(detail.order_id, []);
+        }
+        detailsByOrderId.get(detail.order_id)!.push(detail);
+      }
+    }
+
+    const enrichedHistory = history.map((historyItem) => {
+      const matchingDetails = detailsByOrderId.get(historyItem.order_id) || [];
+
+      const enrichedItem = { ...historyItem };
+
+      if (matchingDetails.length > 0) {
+        const productNames = matchingDetails
+          .map((detail) => detail.product_name)
+          .filter((name) => name);
+        enrichedItem.product_names = productNames;
+
+        const imageUrls = matchingDetails
+          .map((detail) => detail.image_url)
+          .filter((url) => url);
+        enrichedItem.image_urls = imageUrls;
+      }
+
+      return enrichedItem;
+    });
+
+    return {
+      ...mergedContent,
+      purchase_history: enrichedHistory,
+    };
   }
 
   getServerUrl(): string {
