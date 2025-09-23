@@ -8,11 +8,27 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { settings } from './config.js';
 import { Logger } from './logger.js';
 
-const BRAND_MCP_TOOLS: Record<string, string> = {
-  amazon: 'amazon_get_purchase_history',
-  amazonca: 'amazonca_get_purchase_history',
-  officedepot: 'officedepot_get_order_history',
-  wayfair: 'wayfair_get_order_history',
+type MCPTool = {
+  name: string;
+  args?: (results: unknown[]) => Record<string, unknown>[];
+};
+
+const BRAND_MCP_TOOLS: Record<string, MCPTool[]> = {
+  amazon: [{ name: 'amazon_get_purchase_history' }],
+  amazonca: [{ name: 'amazonca_get_purchase_history' }],
+  officedepot: [{ name: 'officedepot_get_order_history' }],
+  wayfair: [
+    { name: 'wayfair_get_order_history' },
+    {
+      name: 'wayfair_get_order_history_details',
+      args: (results) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const orders = (results[0] as any)?.purchase_history || [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return orders.map((order: any) => ({ order_id: order.order_id }));
+      },
+    },
+  ],
 };
 
 export class MCPService {
@@ -118,38 +134,78 @@ export class MCPService {
     return this.client[sessionId];
   }
 
-  getMCPToolName(brandId: string): string {
-    const toolName = BRAND_MCP_TOOLS[brandId];
-    if (!toolName) {
+  getMCPTools(brandId: string): MCPTool[] {
+    const tools = BRAND_MCP_TOOLS[brandId];
+    if (!tools) {
       throw new Error(`No MCP tool configured for brand: ${brandId}`);
     }
-    return toolName;
+    return tools;
   }
 
   async retrieveData(brandId: string, sessionId: string) {
-    const toolName = this.getMCPToolName(brandId);
-
-    Logger.debug('Calling MCP tool', { toolName, brandId, sessionId });
+    const tools = this.getMCPTools(brandId);
+    const results: unknown[] = [];
+    let mergedContent = {} as Record<string, unknown>;
+    let currentToolName = '';
 
     try {
-      const result = await this.callToolWithReconnect({
-        name: toolName,
-        arguments: {},
-        sessionId: sessionId,
-      });
+      for (let i = 0; i < tools.length; i++) {
+        currentToolName = tools[i].name;
+        Logger.debug('Calling MCP tool', {
+          toolName: currentToolName,
+          brandId,
+          sessionId,
+        });
 
-      Logger.debug('MCP tool response received', {
-        brandId,
-        toolName,
-        hasContent: !!result.structuredContent,
-      });
-      return result.structuredContent as Record<string, string>;
+        const toolArgs = tools[i].args?.(results) || [{}];
+
+        // Call tool multiple times, once for each arg set
+        const allResults = [];
+        for (const argSet of toolArgs) {
+          const result = await this.callToolWithReconnect({
+            name: tools[i].name,
+            arguments: argSet,
+            sessionId: sessionId,
+          });
+
+          Logger.debug('MCP tool response received', {
+            brandId,
+            toolName: currentToolName,
+            hasContent: !!result.structuredContent,
+          });
+
+          allResults.push(result.structuredContent);
+        }
+
+        const combinedResult = {} as Record<string, unknown>;
+        for (const result of allResults) {
+          const resultObj = result as Record<string, unknown>;
+          for (const [key, value] of Object.entries(resultObj)) {
+            if (Array.isArray(value)) {
+              if (!combinedResult[key]) {
+                combinedResult[key] = [];
+              }
+              (combinedResult[key] as unknown[]).push(...value);
+            } else {
+              combinedResult[key] = value;
+            }
+          }
+        }
+
+        results.push(combinedResult);
+        mergedContent = {
+          ...mergedContent,
+          ...combinedResult,
+        };
+      }
+
+      return mergedContent as Record<string, string>;
     } catch (error) {
       Logger.error('MCP tool call failed', error as Error, {
         component: 'mcp-service',
         operation: 'retrieveData',
         brandId,
-        toolName,
+        toolName: currentToolName,
         sessionId,
       });
       throw error;
