@@ -16,7 +16,20 @@ type MCPTool = {
 const BRAND_MCP_TOOLS: Record<string, MCPTool[]> = {
   amazon: [{ name: 'amazon_get_purchase_history' }],
   amazonca: [{ name: 'amazonca_get_purchase_history' }],
-  officedepot: [{ name: 'officedepot_get_order_history' }],
+  officedepot: [
+    { name: 'officedepot_get_order_history' },
+    {
+      name: 'officedepot_get_order_history_details',
+      args: (results) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const orders = (results[0] as any)?.purchase_history || [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return orders.map((order: any) => ({
+          order_number: order.order_number,
+        }));
+      },
+    },
+  ],
   wayfair: [
     { name: 'wayfair_get_order_history' },
     {

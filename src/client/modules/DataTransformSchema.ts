@@ -109,7 +109,11 @@ function applyTransform(
 
   switch (mapping.transform) {
     case 'currency':
-      if (typeof processedValue === 'object' && processedValue.currency && processedValue.amount) {
+      if (
+        typeof processedValue === 'object' &&
+        processedValue.currency &&
+        processedValue.amount
+      ) {
         const template = mapping.formatTemplate || '{symbol}{amount}';
         return template
           .replace('{symbol}', processedValue.currency.symbol || '$')
@@ -120,10 +124,16 @@ function applyTransform(
     case 'string':
       if (mapping.formatTemplate) {
         if (mapping.formatTemplate.includes('{value}')) {
-          return mapping.formatTemplate.replace('{value}', String(processedValue));
+          return mapping.formatTemplate.replace(
+            '{value}',
+            String(processedValue)
+          );
         }
         if (mapping.formatTemplate.includes('${value}')) {
-          return mapping.formatTemplate.replace('${value}', String(processedValue));
+          return mapping.formatTemplate.replace(
+            '${value}',
+            String(processedValue)
+          );
         }
       }
       return String(processedValue);
