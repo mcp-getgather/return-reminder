@@ -28,13 +28,13 @@
         "defaultValue": "N/A"
       },
       {
-        "outputKey": "product_name",
-        "sourcePath": "product_name",
+        "outputKey": "product_names",
+        "sourcePath": "product_names",
         "defaultValue": "Unknown Product"
       },
       {
-        "outputKey": "image_url",
-        "sourcePath": "image_url",
+        "outputKey": "image_urls",
+        "sourcePath": "image_urls",
         "transform": "image",
         "defaultValue": ""
       }

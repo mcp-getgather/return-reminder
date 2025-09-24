@@ -265,17 +265,19 @@ export class MCPService {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const detailsByOrderId = new Map<string, any[]>();
+    const orderIdKey = 'order_id' in details[0] ? 'order_id' : 'order_number';
     for (const detail of details) {
-      if (detail.order_id) {
-        if (!detailsByOrderId.has(detail.order_id)) {
-          detailsByOrderId.set(detail.order_id, []);
+      if (detail[orderIdKey]) {
+        if (!detailsByOrderId.has(detail[orderIdKey])) {
+          detailsByOrderId.set(detail[orderIdKey], []);
         }
-        detailsByOrderId.get(detail.order_id)!.push(detail);
+        detailsByOrderId.get(detail[orderIdKey])!.push(detail);
       }
     }
 
     const enrichedHistory = history.map((historyItem) => {
-      const matchingDetails = detailsByOrderId.get(historyItem.order_id) || [];
+      const matchingDetails =
+        detailsByOrderId.get(historyItem[orderIdKey]) || [];
 
       const enrichedItem = { ...historyItem };
 
