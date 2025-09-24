@@ -3,7 +3,7 @@
   "brand_name": "Office Depot",
   "logo_url": "https://upload.wikimedia.org/wikipedia/commons/e/e3/Office-depot-logo.png",
   "dataTransform": {
-    "dataPath": "extract_result.0.content",
+    "dataPath": "purchase_history",
     "fieldMappings": [
       {
         "outputKey": "brand",
@@ -28,12 +28,12 @@
         "defaultValue": "N/A"
       },
       {
-        "outputKey": "product_names",
-        "sourcePath": "product_names",
+        "outputKey": "product_name",
+        "sourcePath": "product_name",
         "defaultValue": "Unknown Product"
       },
       {
-        "outputKey": "image_urls",
+        "outputKey": "image_url",
         "sourcePath": "image_url",
         "transform": "image",
         "defaultValue": ""
