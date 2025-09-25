@@ -23,7 +23,6 @@ export class LocationService {
   }
 
   getClientIp(request: Request): string {
-    return '72.229.28.185';
     const xff = request.headers['x-forwarded-for'];
     if (xff && typeof xff === 'string') {
       return xff.split(',')[0].trim();
