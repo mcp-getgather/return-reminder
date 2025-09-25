@@ -1,6 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
 import locationService from './location-service.js';
-import { ProxyService } from './proxy-service.js';
 import { Logger } from './logger.js';
 
 const blockedDomains = [
