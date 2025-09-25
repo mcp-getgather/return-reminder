@@ -1,5 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import locationService from './location-service.js';
+import { ProxyService } from './proxy-service.js';
+import { Logger } from './logger.js';
 
 const blockedDomains = [
   // Amazon
@@ -63,7 +65,11 @@ export const ipBlocker =
       const ip = locationService.getClientIp(req);
       const result = await locationService.getLocation(ip);
       if (result) {
-        console.log('[ipBlocker] ip: ', ip, ' domain: ', result.traits?.domain);
+        Logger.debug('IP geolocation result', {
+          ip,
+          domain: result.traits?.domain,
+          country: result.country?.isoCode,
+        });
       }
       if (result && result.traits?.domain) {
         const domain = result.traits.domain;
@@ -73,7 +79,11 @@ export const ipBlocker =
             domain.toLowerCase().includes(cloudDomain)
           )
         ) {
-          console.log('[ipBlocker] blocked domain: ', domain);
+          Logger.warn('Blocked domain access', {
+            ip,
+            domain,
+            component: 'ip-blocker',
+          });
           const delay = 3000 + Math.random() * 5000;
           setTimeout(() => {
             res.status(403).send('Access denied.');
@@ -84,7 +94,10 @@ export const ipBlocker =
 
       next();
     } catch (error) {
-      console.error('GeoIP lookup error:', error);
+      Logger.error('GeoIP lookup failed', error as Error, {
+        component: 'ip-blocker',
+        ip: req.ip || 'unknown',
+      });
       next();
     }
   };
