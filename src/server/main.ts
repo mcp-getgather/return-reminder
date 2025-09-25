@@ -7,9 +7,10 @@ import { fileURLToPath } from 'url';
 import { settings } from './config.js';
 import ViteExpress from 'vite-express';
 import { ipBlocker } from './blocker.js';
-import { ProxyService } from './proxy-service.js';
 import { mcpService } from './mcp-service.js';
 import session, { SessionData } from 'express-session';
+import bodyParser from 'body-parser';
+import locationService from './location-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,9 +22,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Initialize proxy service
-const proxyService = new ProxyService();
 
-app.use(ipBlocker(proxyService));
+app.use(ipBlocker());
 
 const createProxy = (path: string) =>
   createProxyMiddleware({
@@ -44,10 +44,27 @@ const createProxy = (path: string) =>
     },
   });
 
-const proxyPaths = ['/link', '/__assets', '/__static/assets', '/api'];
+const proxyPaths = ['/link', '/__assets', '/__static/assets'];
 
 proxyPaths.forEach((path) => {
   app.use(path, createProxy(path));
+});
+app.use('/api', async (req, res, next) => {
+  bodyParser.json()(req, res, async (err) => {
+    if (err) return next(err);
+
+    if (req.method === 'POST') {
+      if (!req.body) {
+        req.body = {};
+      }
+      const clientIp = locationService.getClientIp(req);
+      const requestLocationData =
+        await locationService.getLocationForProxy(clientIp);
+      req.body.location = requestLocationData;
+    }
+
+    createProxy('/api')(req, res, next);
+  });
 });
 
 app.get('/health', (_, res) => {
@@ -172,13 +189,6 @@ app.post('/log-orders', (req, res) => {
   );
   // Respond with 204 No Content to signal successful receipt without extra payload
   res.sendStatus(204);
-});
-
-// Proxy all requests to /getgather/* to the GetGather API
-app.use('/getgather', async (req, res) => {
-  const path = req.path.replace(/^\/getgather/, '');
-  const fullPath = path.startsWith('/') ? path : `/${path}`;
-  await proxyService.reverseProxy(req, res, fullPath);
 });
 
 try {
