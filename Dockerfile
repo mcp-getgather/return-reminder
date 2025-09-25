@@ -28,7 +28,6 @@ COPY --from=docker.io/tailscale/tailscale:stable /usr/local/bin/tailscale /app/t
 RUN mkdir -p /var/run/tailscale /var/cache/tailscale /var/lib/tailscale
 
 COPY --from=builder /app/src/server ./src/server
-COPY --from=builder /app/dist ./src/server/dist
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src/client/config ./src/client/config
