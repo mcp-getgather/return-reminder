@@ -44,25 +44,8 @@ GETGATHER_URL=http://localhost:8000
 
 # Sentry Configuration (optional)
 SENTRY_DSN=https://your-dsn@sentry.io/project-id
-VITE_SENTRY_DSN=https://your-dsn@sentry.io/project-id
 
-# Optional: For source map uploads during build
-SENTRY_ORG=your-org-slug
-SENTRY_PROJECT=your-project-slug
-SENTRY_AUTH_TOKEN=your-auth-token
 ```
-
-### Sentry Setup (Optional)
-
-To enable error tracking and performance monitoring:
-
-1. Create a [Sentry account](https://sentry.io/) and project
-2. Get your DSN from Project Settings → Client Keys (DSN)
-3. Add the DSN to your `.env` file as both `SENTRY_DSN` and `VITE_SENTRY_DSN`
-4. For source map uploads (production builds), also configure:
-   - `SENTRY_ORG`: Your organization slug
-   - `SENTRY_PROJECT`: Your project slug
-   - `SENTRY_AUTH_TOKEN`: Auth token with project write permissions
 
 The app will work without Sentry configuration - errors will simply not be tracked.
 
@@ -75,11 +58,9 @@ For proper MaxMind geolocation, we will use `--network=host` to get real client 
 ```bash
 docker run --network=host \
   -e GETGATHER_URL=your_local_mcp_getgather_url \
-  -e GETGATHER_API_KEY=your_api_key \
   -e MAXMIND_ACCOUNT_ID=your_maxmind_account_id \
   -e MAXMIND_LICENSE_KEY=your_maxmind_license_key \
   -e SENTRY_DSN=your_sentry_dsn \
-  -e VITE_SENTRY_DSN=your_sentry_dsn \
   ghcr.io/mcp-getgather/return-reminder:latest
 ```
 

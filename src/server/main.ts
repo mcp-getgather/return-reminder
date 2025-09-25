@@ -78,6 +78,13 @@ app.get('/health', (_, res) => {
   res.send({ status: 'OK', timestamp: Math.floor(Date.now() / 1000) });
 });
 
+app.get('/internal/sentry/config', (_, res) => {
+  res.json({
+    dsn: settings.SENTRY_DSN,
+    environment: settings.NODE_ENV,
+  });
+});
+
 app.use(
   session({
     secret: '1234567890',

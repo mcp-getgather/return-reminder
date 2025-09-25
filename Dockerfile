@@ -14,8 +14,11 @@ RUN npm run build
 
 FROM base AS runner
 WORKDIR /app
+
+ARG SENTRY_DSN
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV SENTRY_DSN=$SENTRY_DSN
 
 # Install Tailscale dependencies
 RUN apk update && apk add --no-cache ca-certificates iptables ip6tables && rm -rf /var/cache/apk/*

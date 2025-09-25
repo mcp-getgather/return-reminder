@@ -4,7 +4,7 @@ import { settings } from './config.js';
 
 // Initialize Sentry before any other imports
 Sentry.init({
-  dsn: process.env.VITE_SENTRY_DSN,
+  dsn: settings.SENTRY_DSN,
   integrations: [
     Sentry.httpIntegration({
       ignoreIncomingRequests: (url) => {
