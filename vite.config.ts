@@ -8,4 +8,8 @@ export default defineConfig({
   server: {
     allowedHosts: true,
   },
+  build: {
+    outDir: './src/server/dist',
+    emptyOutDir: true,
+  },
 });
