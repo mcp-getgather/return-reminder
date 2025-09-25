@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { ProxyService } from './proxy-service.js';
+import locationService from './location-service.js';
 
 const blockedDomains = [
   // Amazon
@@ -58,11 +58,10 @@ const blockedDomains = [
 ];
 
 export const ipBlocker =
-  (proxyService: ProxyService) =>
-  async (req: Request, res: Response, next: NextFunction) => {
+  () => async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const ip = proxyService.getClientIp(req);
-      const result = await proxyService.getClientLocation(ip);
+      const ip = locationService.getClientIp(req);
+      const result = await locationService.getLocation(ip);
       if (result) {
         console.log('[ipBlocker] ip: ', ip, ' domain: ', result.traits?.domain);
       }
