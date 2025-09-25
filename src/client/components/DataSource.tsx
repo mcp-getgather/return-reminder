@@ -130,7 +130,9 @@ export function DataSource({
               disabled={disabled || isLoading}
               onClick={handleConnect}
               className={`px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2 ${
-                disabled || isConnected || isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                disabled || isConnected || isLoading
+                  ? 'opacity-50 cursor-not-allowed'
+                  : ''
               }`}
             >
               {isLoading ? (

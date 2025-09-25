@@ -135,7 +135,7 @@ export class MCPService {
         `MCP tool response for ${brandId}:`,
         JSON.stringify(result.structuredContent, null, 2)
       );
-      return result.structuredContent;
+      return result.structuredContent as Record<string, string>;
     } catch (error) {
       console.error(`Error calling MCP tool ${toolName}:`, error);
       throw error;

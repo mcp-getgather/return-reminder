@@ -8,7 +8,6 @@ import { settings } from './config.js';
 import ViteExpress from 'vite-express';
 import { ipBlocker } from './blocker.js';
 import { ProxyService } from './proxy-service.js';
-import { handleLinkCreate, handleLinkStatus } from './handlers/link-handler.js';
 import { mcpService } from './mcp-service.js';
 import session, { SessionData } from 'express-session';
 
@@ -82,10 +81,11 @@ app.post('/internal/mcp/retrieve-data', async (req, res) => {
     console.log('Retrieve data request for brand_id:', brand_id);
 
     if (!brand_id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'brand_id is required',
       });
+      return;
     }
 
     const structuredContent = await mcpService.retrieveData(
@@ -139,10 +139,11 @@ app.post('/internal/mcp/poll-auth', async (req, res) => {
     const { link_id } = req.body;
 
     if (!link_id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'link_id is required',
       });
+      return;
     }
 
     const structuredContent = await mcpService.pollSignin(
@@ -161,9 +162,6 @@ app.post('/internal/mcp/poll-auth', async (req, res) => {
     });
   }
 });
-
-app.post('/internal/hosted-link/create', handleLinkCreate);
-app.get('/internal/hosted-link/status/:link_id', handleLinkStatus);
 
 // Endpoint to receive order logs from the client and print them on the server console
 app.post('/log-orders', (req, res) => {
