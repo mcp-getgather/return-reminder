@@ -33,6 +33,7 @@ ReturnReminder is a web app that helps you track and never miss return deadlines
 - **Backend:** Express.js, geolocation via MaxMind.
 - **Data Model:** Purchases include brand, order date, products, return dates, etc.
 - **Calendar Integration:** Add reminders to Google, Apple, Outlook, or download ICS.
+- **Error Tracking:** Sentry integration for both client and server-side error monitoring.
 
 ## Configuration
 
@@ -40,7 +41,30 @@ Create a `.env` file in the project root with the following variables:
 
 ```env
 GETGATHER_URL=http://localhost:8000
+
+# Sentry Configuration (optional)
+SENTRY_DSN=https://your-dsn@sentry.io/project-id
+VITE_SENTRY_DSN=https://your-dsn@sentry.io/project-id
+
+# Optional: For source map uploads during build
+SENTRY_ORG=your-org-slug
+SENTRY_PROJECT=your-project-slug
+SENTRY_AUTH_TOKEN=your-auth-token
 ```
+
+### Sentry Setup (Optional)
+
+To enable error tracking and performance monitoring:
+
+1. Create a [Sentry account](https://sentry.io/) and project
+2. Get your DSN from Project Settings → Client Keys (DSN)
+3. Add the DSN to your `.env` file as both `SENTRY_DSN` and `VITE_SENTRY_DSN`
+4. For source map uploads (production builds), also configure:
+   - `SENTRY_ORG`: Your organization slug
+   - `SENTRY_PROJECT`: Your project slug
+   - `SENTRY_AUTH_TOKEN`: Auth token with project write permissions
+
+The app will work without Sentry configuration - errors will simply not be tracked.
 
 ## Development
 
@@ -54,6 +78,8 @@ docker run --network=host \
   -e GETGATHER_API_KEY=your_api_key \
   -e MAXMIND_ACCOUNT_ID=your_maxmind_account_id \
   -e MAXMIND_LICENSE_KEY=your_maxmind_license_key \
+  -e SENTRY_DSN=your_sentry_dsn \
+  -e VITE_SENTRY_DSN=your_sentry_dsn \
   ghcr.io/mcp-getgather/return-reminder:latest
 ```
 
@@ -90,7 +116,6 @@ npm run dev
    ```
 
    This will:
-
    - Create a new app on Fly.io
    - Use the existing `fly.toml` configuration
    - Build and deploy using the existing Dockerfile

@@ -5,6 +5,7 @@ import {
   transformData,
   type PurchaseHistory,
 } from '../modules/DataTransformSchema';
+import * as Sentry from '@sentry/react';
 
 interface DataSourceProps {
   onSuccessConnect: (data: PurchaseHistory[]) => void;
@@ -71,6 +72,17 @@ export function DataSource({
         throw new Error('Unexpected response format');
       }
     } catch (error) {
+      console.error('DataSource connection error:', error);
+      Sentry.captureException(error, {
+        tags: {
+          component: 'DataSource',
+          brand_id: brandConfig.brand_id,
+          brand_name: brandConfig.brand_name,
+        },
+        extra: {
+          brandConfig,
+        },
+      });
       alert(
         `Failed to retrieve data: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
