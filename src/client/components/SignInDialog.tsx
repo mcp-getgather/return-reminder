@@ -13,6 +13,24 @@ interface SignInDialogProps {
   linkId: string | null;
 }
 
+type LoadingState = 'AUTHENTICATION' | 'RETRIEVING_DATA' | null;
+
+const LOADING_STATE_MESSAGES = {
+  AUTHENTICATION: {
+    title: 'Authentication in Progress',
+    message:
+      'Please complete the authentication process in the opened tab to connect your account.',
+    notes:
+      'This dialog will close automatically when authentication is complete.',
+  },
+  RETRIEVING_DATA: {
+    title: 'Retrieving data...',
+    message: 'Please wait while we retrieve your data.',
+    notes:
+      'This dialog will close automatically when data retrieval is complete.',
+  },
+};
+
 export function SignInDialog({
   isOpen,
   onClose,
@@ -23,6 +41,7 @@ export function SignInDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [pollingError, setPollingError] = useState<string | null>(null);
+  const [loadingState, setLoadingState] = useState<LoadingState>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -35,7 +54,7 @@ export function SignInDialog({
       if (linkId && !isPolling) {
         setIsPolling(true);
         setPollingError(null);
-
+        setLoadingState('AUTHENTICATION');
         // Poll for authentication completion
         const pollForAuth = async () => {
           let attempts = 0;
@@ -75,6 +94,7 @@ export function SignInDialog({
         // Execute the polling and data retrieval flow
         pollForAuth()
           .then(() => {
+            setLoadingState('RETRIEVING_DATA');
             // Authentication complete, now retrieve the data
             return fetch('/internal/mcp/retrieve-data', {
               method: 'POST',
@@ -106,6 +126,7 @@ export function SignInDialog({
 
             onSuccessConnect(transformedData);
             onClose();
+            setLoadingState(null);
           })
           .catch((error) => {
             console.error('Authentication flow failed:', error);
@@ -113,12 +134,14 @@ export function SignInDialog({
               error.message || 'Authentication failed. Please try again.'
             );
             setIsPolling(false);
+            setLoadingState(null);
           });
       }
     } else {
       dialog.close();
       setIsPolling(false);
       setPollingError(null);
+      setLoadingState(null);
     }
   }, [isOpen, brandConfig, onSuccessConnect, onClose, linkId]);
 
@@ -148,7 +171,7 @@ export function SignInDialog({
           </div>
 
           <h3 className="text-lg font-medium text-center leading-6 text-gray-900 mb-4">
-            Authentication in Progress
+            {loadingState ? LOADING_STATE_MESSAGES[loadingState].title : ''}
           </h3>
           <div className="text-center">
             {pollingError ? (
@@ -169,12 +192,14 @@ export function SignInDialog({
             ) : (
               <>
                 <p className="text-gray-600 mb-4">
-                  Please complete the authentication process in the opened tab
-                  to connect your {brandConfig.brand_name} account.
+                  {loadingState
+                    ? LOADING_STATE_MESSAGES[loadingState].message
+                    : ''}
                 </p>
                 <p className="text-sm text-gray-500">
-                  This dialog will close automatically when authentication is
-                  complete.
+                  {loadingState
+                    ? LOADING_STATE_MESSAGES[loadingState].notes
+                    : ''}
                 </p>
                 {isPolling && (
                   <div className="mt-4">
