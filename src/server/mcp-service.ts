@@ -6,6 +6,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { settings } from './config.js';
+import locationService, { LocationData } from './location-service.js';
 
 const BRAND_MCP_TOOLS: Record<string, string> = {
   amazon: 'amazon_get_purchase_history',
@@ -20,10 +21,12 @@ export class MCPService {
   private initPromise: Promise<Client> | null = null;
   private serverUrl: string;
   private mcpUrl: string;
+  private clientIpAddresses: Map<string, string> = new Map();
 
   private constructor() {
     this.serverUrl = settings.GETGATHER_URL || 'http://localhost:8000';
     this.mcpUrl = `${this.serverUrl}/mcp/`;
+    this.clientIpAddresses = new Map();
   }
 
   static getInstance(): MCPService {
@@ -43,12 +46,20 @@ export class MCPService {
         { capabilities: {} }
       );
 
+      const ipAddress = this.clientIpAddresses.get(sessionId);
+      let location: LocationData | null = null;
+      if (ipAddress) {
+        location = await locationService.getLocationForProxy(ipAddress);
+      }
+
+      console.log('Setup MCP client with location: ', location);
       const transport = new StreamableHTTPClientTransport(
         new URL(this.mcpUrl),
         {
           requestInit: {
             headers: {
               'x-getgather-custom-app': 'return-reminder',
+              'x-location': location ? JSON.stringify(location) : '',
             },
           },
         }
@@ -159,6 +170,10 @@ export class MCPService {
     );
 
     return result.structuredContent;
+  }
+
+  setClientIpAddress(sessionId: string, ipAddress: string) {
+    this.clientIpAddresses.set(sessionId, ipAddress);
   }
 
   getServerUrl(): string {

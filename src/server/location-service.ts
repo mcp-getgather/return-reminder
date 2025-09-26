@@ -1,9 +1,8 @@
 import { City, WebServiceClient } from '@maxmind/geoip2-node';
 import { settings } from './config.js';
-import { Cache } from './cache.js';
 import { Request } from 'express';
 
-type LocationData = {
+export type LocationData = {
   ip: string;
   city: string | null;
   state: string | null;
@@ -11,7 +10,7 @@ type LocationData = {
   postal_code: string | null;
 };
 
-const ipCache = new Cache(5);
+const ipCache = new Map<string, City>();
 
 export class LocationService {
   private accountId: string;
