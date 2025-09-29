@@ -3,7 +3,7 @@
   "brand_name": "Wayfair",
   "logo_url": "https://upload.wikimedia.org/wikipedia/commons/0/0a/Wayfair_logo_with_tagline.png",
   "dataTransform": {
-    "dataPath": "extract_result.0.content.data.orderProductPagesByCustomer.nodes",
+    "dataPath": "purchase_history",
     "fieldMappings": [
       {
         "outputKey": "brand",
@@ -12,32 +12,31 @@
       },
       {
         "outputKey": "order_id",
-        "sourcePath": "order.orderId",
+        "sourcePath": "order_id",
         "defaultValue": "N/A"
       },
       {
         "outputKey": "order_date",
-        "sourcePath": "order.placedAt.displayDate",
+        "sourcePath": "order_date",
         "defaultValue": "N/A",
         "transform": "date"
       },
       {
         "outputKey": "order_total",
-        "sourcePath": "order.financials.currentTotal",
-        "transform": "currency",
-        "formatTemplate": "{symbol}{amount}",
+        "sourcePath": "total_price",
+        "transform": "string",
+        "extractPattern": "\\$([0-9]+\\.?[0-9]*)",
+        "formatTemplate": "${value}",
         "defaultValue": "$0.00"
       },
       {
         "outputKey": "product_names",
-        "sourcePath": "product.productName",
-        "transform": "array",
+        "sourcePath": "product_names",
         "defaultValue": "Unknown Product"
       },
       {
         "outputKey": "image_urls",
-        "sourcePath": "product.imageUrl",
-        "transform": "array",
+        "sourcePath": "image_urls",
         "defaultValue": ""
       }
     ]
