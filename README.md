@@ -51,7 +51,6 @@ For proper MaxMind geolocation, we will use `--network=host` to get real client 
 ```bash
 docker run --network=host \
   -e GETGATHER_URL=your_local_mcp_getgather_url \
-  -e GETGATHER_API_KEY=your_api_key \
   -e MAXMIND_ACCOUNT_ID=your_maxmind_account_id \
   -e MAXMIND_LICENSE_KEY=your_maxmind_license_key \
   ghcr.io/mcp-getgather/return-reminder:latest
