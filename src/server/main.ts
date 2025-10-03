@@ -122,6 +122,8 @@ app.post('/internal/mcp/retrieve-data', async (req, res) => {
       return;
     }
 
+    const ipAddress = locationService.getClientIp(req);
+    mcpService.setClientIpAddress(req.sessionID, ipAddress);
     const structuredContent = await mcpService.retrieveData(
       brand_id,
       req.sessionID
