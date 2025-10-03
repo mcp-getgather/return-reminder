@@ -33,6 +33,7 @@ Return Reminder is a web app that helps you track and never miss return deadline
 - **Backend:** Express.js, geolocation via MaxMind.
 - **Data Model:** Purchases include brand, order date, products, return dates, etc.
 - **Calendar Integration:** Add reminders to Google, Apple, Outlook, or download ICS.
+- **Error Tracking:** Sentry integration for both client and server-side error monitoring.
 
 ## Configuration
 
@@ -40,7 +41,13 @@ Create a `.env` file in the project root with the following variables:
 
 ```env
 GETGATHER_URL=http://localhost:8000
+
+# Sentry Configuration (optional)
+SENTRY_DSN=https://your-dsn@sentry.io/project-id
+
 ```
+
+The app will work without Sentry configuration - errors will simply not be tracked.
 
 ## Development
 
@@ -53,6 +60,7 @@ docker run --network=host \
   -e GETGATHER_URL=your_local_mcp_getgather_url \
   -e MAXMIND_ACCOUNT_ID=your_maxmind_account_id \
   -e MAXMIND_LICENSE_KEY=your_maxmind_license_key \
+  -e SENTRY_DSN=your_sentry_dsn \
   ghcr.io/mcp-getgather/return-reminder:latest
 ```
 

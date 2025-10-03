@@ -1,4 +1,7 @@
+import './instrument.js'; // Must be first import
+import * as Sentry from '@sentry/node';
 import express from 'express';
+import { Logger } from './logger.js';
 import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
 import { Socket } from 'net';
 import path from 'path';
@@ -11,6 +14,8 @@ import { mcpService } from './mcp-service.js';
 import session, { SessionData } from 'express-session';
 import bodyParser from 'body-parser';
 import locationService from './location-service.js';
+
+// Sentry is initialized in instrument.js
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,7 +41,9 @@ const createProxy = (path: string) =>
         req: express.Request,
         res: express.Response | Socket
       ) => {
-        console.error(`Proxy req: ${req} error: ${err}`);
+        Logger.error('Proxy request failed', err as Error, {
+          req: req.toString(),
+        });
         if ('status' in res) {
           res.status(500).send('Proxy error occurred');
         }
@@ -71,6 +78,13 @@ app.get('/health', (_, res) => {
   res.send({ status: 'OK', timestamp: Math.floor(Date.now() / 1000) });
 });
 
+app.get('/internal/sentry/config', (_, res) => {
+  res.json({
+    dsn: settings.SENTRY_DSN,
+    environment: settings.NODE_ENV,
+  });
+});
+
 app.use(
   session({
     secret: '1234567890',
@@ -95,7 +109,10 @@ app.post('/internal/mcp/retrieve-data', async (req, res) => {
   try {
     const { brand_id } = req.body;
 
-    console.log('Retrieve data request for brand_id:', brand_id);
+    Logger.info('MCP retrieve data request', {
+      brandId: brand_id,
+      sessionId: req.sessionID,
+    });
 
     if (!brand_id) {
       res.status(400).json({
@@ -122,14 +139,11 @@ app.post('/internal/mcp/retrieve-data', async (req, res) => {
       const appHost = `${protocol}://${host}`;
       const serverUrl = mcpService.getServerUrl();
 
-      console.log(
-        'Rewriting URL from',
-        structuredContent.url,
-        'with serverUrl',
+      Logger.debug('Rewriting URL', {
+        from: structuredContent.url,
         serverUrl,
-        'to appHost',
-        appHost
-      );
+        to: appHost,
+      });
 
       if (structuredContent.url.includes(serverUrl)) {
         structuredContent.url = structuredContent.url.replace(
@@ -144,6 +158,12 @@ app.post('/internal/mcp/retrieve-data', async (req, res) => {
       data: structuredContent,
     });
   } catch (error) {
+    Logger.error('MCP retrieve data failed', error as Error, {
+      component: 'server',
+      operation: 'retrieve-data',
+      brandId: req.body.brand_id,
+      sessionId: req.sessionID,
+    });
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -173,6 +193,12 @@ app.post('/internal/mcp/poll-auth', async (req, res) => {
       data: structuredContent,
     });
   } catch (error) {
+    Logger.error('MCP poll auth failed', error as Error, {
+      component: 'server',
+      operation: 'poll-auth',
+      linkId: req.body.link_id,
+      sessionId: req.sessionID,
+    });
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -182,29 +208,54 @@ app.post('/internal/mcp/poll-auth', async (req, res) => {
 
 // Endpoint to receive order logs from the client and print them on the server console
 app.post('/log-orders', (req, res) => {
-  // The client sends an object: { brand: string, orders: PurchaseHistory[] }
-  console.log(
-    'Received orders from client:',
-    JSON.stringify(req.body, null, 2)
-  );
+  Logger.info('Received orders from client', {
+    brand: req.body.brand,
+    orderCount: req.body.orders?.length || 0,
+  });
   // Respond with 204 No Content to signal successful receipt without extra payload
   res.sendStatus(204);
 });
 
 try {
-  console.log('Checking GETGATHER_URL:', settings.GETGATHER_URL);
+  Logger.debug('Checking GETGATHER_URL', { url: settings.GETGATHER_URL });
   const response = await fetch(settings.GETGATHER_URL);
   if (response.status === 200) {
-    console.log('✓ GETGATHER_URL is reachable');
+    Logger.info('GetGather service is reachable');
   } else {
-    console.warn(`⚠ GETGATHER_URL returned status ${response.status}`);
+    Logger.warn(`GetGather service returned status ${response.status}`);
   }
 } catch (error) {
-  console.error(
-    '✗ GETGATHER_URL is not reachable:',
-    error instanceof Error ? error.message : String(error)
-  );
+  Logger.warn('GetGather service is not reachable', {
+    error: error instanceof Error ? error.message : String(error),
+  });
 }
+
+// The error handler must be registered before any other error middleware and after all controllers
+Sentry.setupExpressErrorHandler(app);
+
+app.use(
+  (
+    err: Error,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    Logger.error('Unhandled server error', err, {
+      component: 'server',
+      operation: 'fallback-error-handler',
+      url: req.url,
+      method: req.method,
+    });
+
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Internal Server Error',
+        message: err.message,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+);
 
 if (settings.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
@@ -213,10 +264,10 @@ if (settings.NODE_ENV === 'production') {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
   });
   app.listen(3000, () => {
-    console.log('Server is running at http://localhost:3000');
+    console.log('Server running in production mode on port 3000');
   });
 } else {
   ViteExpress.listen(app, 3000, () =>
-    console.log('Server is listening on port http://localhost:3000')
+    console.log('Server listening in development mode on port 3000')
   );
 }

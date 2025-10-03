@@ -133,7 +133,6 @@ export function ReturnReminder() {
           get notified when items are approaching their return expiration date.
         </p>
       </div>
-
       {urgentOrders.length > 0 && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-lg">
           <div className="flex items-center">
@@ -201,7 +200,6 @@ export function ReturnReminder() {
           ))}
         </div>
       </div>
-
       {orders.length > 0 && (
         <section className="mt-8 bg-white rounded-2xl p-8 shadow-sm">
           <div className="flex items-center justify-between mb-6">

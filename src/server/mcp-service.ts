@@ -6,6 +6,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { settings } from './config.js';
+import { Logger } from './logger.js';
 
 const BRAND_MCP_TOOLS: Record<string, string> = {
   amazon: 'amazon_get_purchase_history',
@@ -56,7 +57,7 @@ export class MCPService {
       await client.connect(transport);
 
       this.client[sessionId] = client;
-      console.log('MCP client initialized successfully');
+      Logger.info('MCP client initialized successfully');
       return client;
     })();
 
@@ -94,7 +95,13 @@ export class MCPService {
       const client = await this.getClient(params.sessionId);
       return await client.callTool(params, resultSchema, options);
     } catch (err) {
-      console.warn('callTool failed, reconnecting with MCP Client...', err);
+      Logger.warn('MCP call tool failed, reconnecting', {
+        component: 'mcp-service',
+        operation: 'callTool',
+        toolName: params.name,
+        sessionId: params.sessionId,
+        error: err instanceof Error ? err.message : String(err),
+      });
       await this.resetAndInitializeClient(params.sessionId);
       const client = await this.getClient(params.sessionId);
       return await client.callTool(params, resultSchema, options);
@@ -122,7 +129,7 @@ export class MCPService {
   async retrieveData(brandId: string, sessionId: string) {
     const toolName = this.getMCPToolName(brandId);
 
-    console.log(`Calling MCP tool: ${toolName} for brand: ${brandId}`);
+    Logger.debug('Calling MCP tool', { toolName, brandId, sessionId });
 
     try {
       const result = await this.callToolWithReconnect({
@@ -131,19 +138,26 @@ export class MCPService {
         sessionId: sessionId,
       });
 
-      console.log(
-        `MCP tool response for ${brandId}:`,
-        JSON.stringify(result.structuredContent, null, 2)
-      );
+      Logger.debug('MCP tool response received', {
+        brandId,
+        toolName,
+        hasContent: !!result.structuredContent,
+      });
       return result.structuredContent as Record<string, string>;
     } catch (error) {
-      console.error(`Error calling MCP tool ${toolName}:`, error);
+      Logger.error('MCP tool call failed', error as Error, {
+        component: 'mcp-service',
+        operation: 'retrieveData',
+        brandId,
+        toolName,
+        sessionId,
+      });
       throw error;
     }
   }
 
   async pollSignin(linkId: string, sessionId: string) {
-    console.log(`Polling auth status for link_id: ${linkId}`);
+    Logger.debug('Polling auth status', { linkId, sessionId });
 
     const result = await this.callToolWithReconnect(
       {
