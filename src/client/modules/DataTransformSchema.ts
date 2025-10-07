@@ -20,6 +20,8 @@ export type DataFieldMapping = {
   defaultValue?: string;
   /** Format template for currency transform */
   formatTemplate?: string;
+  /** Regex pattern for extract transform - first capture group will be extracted */
+  extractPattern?: string;
 };
 
 export type DataTransformSchema = {
@@ -96,63 +98,72 @@ function applyTransform(
     return mapping.defaultValue || '';
   }
 
+  // Preprocessing: Apply extractPattern if provided
+  let processedValue = value;
+  if (mapping.extractPattern && typeof value === 'string') {
+    const match = value.match(new RegExp(mapping.extractPattern));
+    if (match && match[1]) {
+      processedValue = match[1];
+    }
+  }
+
   switch (mapping.transform) {
     case 'currency':
-      if (typeof value === 'object' && value.currency && value.amount) {
+      if (typeof processedValue === 'object' && processedValue.currency && processedValue.amount) {
         const template = mapping.formatTemplate || '{symbol}{amount}';
         return template
-          .replace('{symbol}', value.currency.symbol || '$')
-          .replace('{amount}', value.amount || '0.00');
+          .replace('{symbol}', processedValue.currency.symbol || '$')
+          .replace('{amount}', processedValue.amount || '0.00');
       }
-      return String(value);
+      return String(processedValue);
 
     case 'string':
       if (mapping.formatTemplate) {
         if (mapping.formatTemplate.includes('{value}')) {
-          return mapping.formatTemplate.replace('{value}', String(value));
+          return mapping.formatTemplate.replace('{value}', String(processedValue));
         }
         if (mapping.formatTemplate.includes('${value}')) {
-          return mapping.formatTemplate.replace('${value}', String(value));
+          return mapping.formatTemplate.replace('${value}', String(processedValue));
         }
       }
-      return String(value);
+      return String(processedValue);
 
     case 'image':
       // Handle array of images
-      if (Array.isArray(value)) {
-        return value
+      if (Array.isArray(processedValue)) {
+        return processedValue
           .filter((img) => img && typeof img === 'string')
           .map(String);
       }
-      return String(value);
+      return String(processedValue);
 
     case 'date':
-      if (Array.isArray(value)) {
-        return value.map((v) => {
+      if (Array.isArray(processedValue)) {
+        return processedValue.map((v) => {
           if (typeof v === 'string') {
             return parseReturnDate(v);
           }
           return v;
         });
       }
-      if (!value) {
+      if (!processedValue) {
         return null;
       }
 
-      if (typeof value === 'object' && value.displayDate) {
-        return String(value.displayDate);
+      if (typeof processedValue === 'object' && processedValue.displayDate) {
+        return String(processedValue.displayDate);
       }
-      return new Date(value);
+      return new Date(processedValue);
     case 'array':
-      if (Array.isArray(value)) {
-        return value.map(String);
+      if (Array.isArray(processedValue)) {
+        return processedValue.map(String);
       }
-      return [String(value)];
+      return [String(processedValue)];
     default:
-      if (Array.isArray(value)) {
-        return value.map(String);
+      if (Array.isArray(processedValue)) {
+        return processedValue.map(String);
       }
-      return String(value);
+      return String(processedValue);
   }
 }
 

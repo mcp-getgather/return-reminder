@@ -51,7 +51,9 @@ export const downloadReturnRemindersCalendar = (
 
   URL.revokeObjectURL(url);
 };
-export const getEarliestReturnDate = (returnDates: Date[]): Date | null => {
+export const getEarliestReturnDate = (
+  returnDates: Date[] = []
+): Date | null => {
   const dates = returnDates.filter((date): date is Date => date !== null);
 
   return dates.length > 0
