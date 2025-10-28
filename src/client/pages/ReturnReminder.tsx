@@ -4,7 +4,7 @@ import amazon from '../config/amazon.json';
 import amazonca from '../config/amazonca.json';
 import wayfair from './../config/wayfair.json';
 import officedepot from '../config/officedepot.json';
-// import nordstrom from '../config/nordstrom.json';
+import nordstrom from '../config/nordstrom.json';
 import type { BrandConfig } from '../modules/Config';
 import calendarIcon from '../assets/calendar.svg';
 import { AddToCalendar } from '../components/AddToCalendar';
@@ -20,14 +20,21 @@ const amazonConfig = amazon as BrandConfig;
 const amazoncaConfig = amazonca as BrandConfig;
 const wayfairConfig = wayfair as BrandConfig;
 const officedepotConfig = officedepot as BrandConfig;
-// const nordstromConfig = nordstrom as BrandConfig;
+const nordstromConfig = nordstrom as BrandConfig;
 
 const BRANDS: Array<BrandConfig> = [
   amazonConfig,
   amazoncaConfig,
   officedepotConfig,
-  // nordstromConfig,
+  nordstromConfig,
   wayfairConfig,
+];
+
+const EXCLUDED_BRANDS: Array<string> = [
+  nordstromConfig.brand_id,
+  // NOTE: temporarily excluded wayfair brand due to this issue:
+  // https://github.com/mcp-getgather/private-issues/issues/76
+  wayfairConfig.brand_id,
 ];
 
 export function ReturnReminder() {
@@ -63,7 +70,11 @@ export function ReturnReminder() {
           const maxReturnDates: Date[] = [];
 
           order.product_names.forEach((_, index) => {
-            if (!order.max_return_dates?.[index] && order.order_date) {
+            if (
+              !order.max_return_dates?.[index] &&
+              order.order_date &&
+              !isNaN(new Date(order.order_date).getTime())
+            ) {
               maxReturnDates.push(
                 new Date(
                   new Date(order.order_date).setDate(
@@ -133,7 +144,6 @@ export function ReturnReminder() {
           get notified when items are approaching their return expiration date.
         </p>
       </div>
-
       {urgentOrders.length > 0 && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-lg">
           <div className="flex items-center">
@@ -186,7 +196,9 @@ export function ReturnReminder() {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {BRANDS.map((brandConfig) => (
+          {BRANDS.filter(
+            (brandConfig) => !EXCLUDED_BRANDS.includes(brandConfig.brand_id)
+          ).map((brandConfig) => (
             <DataSource
               key={brandConfig.brand_id}
               brandConfig={brandConfig}
@@ -201,7 +213,6 @@ export function ReturnReminder() {
           ))}
         </div>
       </div>
-
       {orders.length > 0 && (
         <section className="mt-8 bg-white rounded-2xl p-8 shadow-sm">
           <div className="flex items-center justify-between mb-6">
@@ -256,7 +267,11 @@ export function ReturnReminder() {
                         </p>
                       </div>
                       <p className="text-sm text-gray-600">
-                        Ordered: {order.order_date?.toLocaleDateString() ?? ''}
+                        Ordered:{' '}
+                        {order.order_date &&
+                        !isNaN(new Date(order.order_date).getTime())
+                          ? order.order_date.toLocaleDateString()
+                          : (order.order_date as unknown as string)}
                         <span className="mx-2">•</span>
                         Total: {order.order_total}
                       </p>

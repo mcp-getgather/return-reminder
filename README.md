@@ -1,6 +1,6 @@
 # ReturnReminder
 
-ReturnReminder is a web app that helps you track and never miss return deadlines for your online purchases from major retailers like Amazon, Wayfair, and Office Depot.
+Return Reminder is a web app that helps you track and never miss return deadlines for your online purchases from major retailers like Amazon, Wayfair, and Office Depot.
 
 **Live Demo:** https://returnreminder.com/
 
@@ -33,6 +33,7 @@ ReturnReminder is a web app that helps you track and never miss return deadlines
 - **Backend:** Express.js, geolocation via MaxMind.
 - **Data Model:** Purchases include brand, order date, products, return dates, etc.
 - **Calendar Integration:** Add reminders to Google, Apple, Outlook, or download ICS.
+- **Error Tracking:** Sentry integration for both client and server-side error monitoring.
 
 ## Configuration
 
@@ -40,7 +41,13 @@ Create a `.env` file in the project root with the following variables:
 
 ```env
 GETGATHER_URL=http://localhost:8000
+
+# Sentry Configuration (optional)
+SENTRY_DSN=https://your-dsn@sentry.io/project-id
+
 ```
+
+The app will work without Sentry configuration - errors will simply not be tracked.
 
 ## Development
 
@@ -51,9 +58,9 @@ For proper MaxMind geolocation, we will use `--network=host` to get real client 
 ```bash
 docker run --network=host \
   -e GETGATHER_URL=your_local_mcp_getgather_url \
-  -e GETGATHER_API_KEY=your_api_key \
   -e MAXMIND_ACCOUNT_ID=your_maxmind_account_id \
   -e MAXMIND_LICENSE_KEY=your_maxmind_license_key \
+  -e SENTRY_DSN=your_sentry_dsn \
   ghcr.io/mcp-getgather/return-reminder:latest
 ```
 
@@ -67,58 +74,3 @@ Then open [localhost:3000](http://localhost:3000) to access the application.
 npm install
 npm run dev
 ```
-
-## Deployment (Fly.io)
-
-### Prerequisites
-
-1. Install the Fly CLI: https://fly.io/docs/getting-started/installing-flyctl/
-2. Sign up for a Fly.io account: https://fly.io/app/sign-up
-
-### Deploy Steps
-
-1. **Login to Fly.io**:
-
-   ```bash
-   fly auth login
-   ```
-
-2. **Create and deploy the app**:
-
-   ```bash
-   fly launch
-   ```
-
-   This will:
-
-   - Create a new app on Fly.io
-   - Use the existing `fly.toml` configuration
-   - Build and deploy using the existing Dockerfile
-   - Sometimes it will update app name
-
-3. **Set up secrets**:
-
-   ```bash
-   cp .env.template .env
-   # IMPORTANT, edit .env with your actual values
-   fly secrets import < .env
-   ```
-
-4. **Deploy updates**:
-   ```bash
-   fly deploy
-   ```
-
-### Configuration
-
-The `fly.toml` file contains the deployment configuration:
-
-- **Memory**: 1GB RAM
-- **Auto-scaling**: Starts/stops machines based on traffic
-- **HTTPS**: Automatically enforced
-
-### Monitoring
-
-- **View logs**: `fly logs`
-- **Check status**: `fly status`
-- **Open in browser**: `fly open`

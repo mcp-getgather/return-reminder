@@ -7,12 +7,42 @@ import { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { settings } from './config.js';
 import locationService, { LocationData } from './location-service.js';
+import { Logger } from './logger.js';
 
-const BRAND_MCP_TOOLS: Record<string, string> = {
-  amazon: 'amazon_get_purchase_history',
-  amazonca: 'amazonca_get_purchase_history',
-  officedepot: 'officedepot_get_order_history',
-  wayfair: 'wayfair_get_order_history',
+type MCPTool = {
+  name: string;
+  args?: (results: unknown[]) => Record<string, unknown>[];
+};
+
+const BRAND_MCP_TOOLS: Record<string, MCPTool[]> = {
+  amazon: [{ name: 'amazon_get_purchase_history' }],
+  amazonca: [{ name: 'amazonca_get_purchase_history' }],
+  officedepot: [
+    { name: 'officedepot_get_order_history' },
+    {
+      name: 'officedepot_get_order_history_details',
+      args: (results) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const orders = (results[0] as any)?.purchase_history || [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return orders.map((order: any) => ({
+          order_number: order.order_number,
+        }));
+      },
+    },
+  ],
+  wayfair: [
+    { name: 'wayfair_get_order_history' },
+    {
+      name: 'wayfair_get_order_history_details',
+      args: (results) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const orders = (results[0] as any)?.purchase_history || [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return orders.map((order: any) => ({ order_id: order.order_id }));
+      },
+    },
+  ],
 };
 
 export class MCPService {
@@ -67,7 +97,7 @@ export class MCPService {
       await client.connect(transport);
 
       this.client[sessionId] = client;
-      console.log('MCP client initialized successfully');
+      Logger.info('MCP client initialized successfully');
       return client;
     })();
 
@@ -105,7 +135,13 @@ export class MCPService {
       const client = await this.getClient(params.sessionId);
       return await client.callTool(params, resultSchema, options);
     } catch (err) {
-      console.warn('callTool failed, reconnecting with MCP Client...', err);
+      Logger.warn('MCP call tool failed, reconnecting', {
+        component: 'mcp-service',
+        operation: 'callTool',
+        toolName: params.name,
+        sessionId: params.sessionId,
+        error: err instanceof Error ? err.message : String(err),
+      });
       await this.resetAndInitializeClient(params.sessionId);
       const client = await this.getClient(params.sessionId);
       return await client.callTool(params, resultSchema, options);
@@ -122,39 +158,93 @@ export class MCPService {
     return this.client[sessionId];
   }
 
-  getMCPToolName(brandId: string): string {
-    const toolName = BRAND_MCP_TOOLS[brandId];
-    if (!toolName) {
+  getMCPTools(brandId: string): MCPTool[] {
+    const tools = BRAND_MCP_TOOLS[brandId];
+    if (!tools) {
       throw new Error(`No MCP tool configured for brand: ${brandId}`);
     }
-    return toolName;
+    return tools;
   }
 
   async retrieveData(brandId: string, sessionId: string) {
-    const toolName = this.getMCPToolName(brandId);
-
-    console.log(`Calling MCP tool: ${toolName} for brand: ${brandId}`);
+    const tools = this.getMCPTools(brandId);
+    const results: unknown[] = [];
+    let mergedContent = {} as Record<string, unknown>;
+    let currentToolName = '';
 
     try {
-      const result = await this.callToolWithReconnect({
-        name: toolName,
-        arguments: {},
-        sessionId: sessionId,
-      });
+      for (let i = 0; i < tools.length; i++) {
+        currentToolName = tools[i].name;
+        Logger.debug('Calling MCP tool', {
+          toolName: currentToolName,
+          brandId,
+          sessionId,
+        });
 
-      console.log(
-        `MCP tool response for ${brandId}:`,
-        JSON.stringify(result.structuredContent, null, 2)
-      );
-      return result.structuredContent as Record<string, string>;
+        const toolArgs = tools[i].args?.(results) || [{}];
+
+        // Call tool multiple times, once for each arg set
+        const allResults = [];
+        for (const argSet of toolArgs) {
+          const result = await this.callToolWithReconnect({
+            name: tools[i].name,
+            arguments: argSet,
+            sessionId: sessionId,
+          });
+
+          Logger.debug('MCP tool response received', {
+            brandId,
+            toolName: currentToolName,
+            hasContent: !!result.structuredContent,
+          });
+
+          allResults.push(result.structuredContent);
+        }
+
+        const combinedResult = {} as Record<string, unknown>;
+        for (const result of allResults) {
+          const resultObj = result as Record<string, unknown>;
+          for (const [key, value] of Object.entries(resultObj)) {
+            if (Array.isArray(value)) {
+              if (!combinedResult[key]) {
+                combinedResult[key] = [];
+              }
+              (combinedResult[key] as unknown[]).push(...value);
+            } else {
+              combinedResult[key] = value;
+            }
+          }
+        }
+
+        results.push(combinedResult);
+        mergedContent = {
+          ...mergedContent,
+          ...combinedResult,
+        };
+      }
+
+      if (
+        mergedContent.purchase_history &&
+        mergedContent.purchase_history_details
+      ) {
+        mergedContent = this.wireOrderHistoryWithDetails(mergedContent);
+      }
+
+      return mergedContent as Record<string, string>;
     } catch (error) {
-      console.error(`Error calling MCP tool ${toolName}:`, error);
+      Logger.error('MCP tool call failed', error as Error, {
+        component: 'mcp-service',
+        operation: 'retrieveData',
+        brandId,
+        toolName: currentToolName,
+        sessionId,
+      });
       throw error;
     }
   }
 
   async pollSignin(linkId: string, sessionId: string) {
-    console.log(`Polling auth status for link_id: ${linkId}`);
+    Logger.debug('Polling auth status', { linkId, sessionId });
 
     const result = await this.callToolWithReconnect(
       {
@@ -174,6 +264,57 @@ export class MCPService {
 
   setClientIpAddress(sessionId: string, ipAddress: string) {
     this.clientIpAddresses.set(sessionId, ipAddress);
+  }
+
+  private wireOrderHistoryWithDetails(
+    mergedContent: Record<string, unknown>
+  ): Record<string, unknown> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const history = mergedContent.purchase_history as any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const details = mergedContent.purchase_history_details as any[];
+
+    if (!Array.isArray(history) || !Array.isArray(details)) {
+      return mergedContent;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const detailsByOrderId = new Map<string, any[]>();
+    const orderIdKey = 'order_id' in details[0] ? 'order_id' : 'order_number';
+    for (const detail of details) {
+      if (detail[orderIdKey]) {
+        if (!detailsByOrderId.has(detail[orderIdKey])) {
+          detailsByOrderId.set(detail[orderIdKey], []);
+        }
+        detailsByOrderId.get(detail[orderIdKey])!.push(detail);
+      }
+    }
+
+    const enrichedHistory = history.map((historyItem) => {
+      const matchingDetails =
+        detailsByOrderId.get(historyItem[orderIdKey]) || [];
+
+      const enrichedItem = { ...historyItem };
+
+      if (matchingDetails.length > 0) {
+        const productNames = matchingDetails
+          .map((detail) => detail.product_name)
+          .filter((name) => name);
+        enrichedItem.product_names = productNames;
+
+        const imageUrls = matchingDetails
+          .map((detail) => detail.image_url)
+          .filter((url) => url);
+        enrichedItem.image_urls = imageUrls;
+      }
+
+      return enrichedItem;
+    });
+
+    return {
+      ...mergedContent,
+      purchase_history: enrichedHistory,
+    };
   }
 
   getServerUrl(): string {
