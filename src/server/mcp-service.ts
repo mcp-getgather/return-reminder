@@ -15,7 +15,7 @@ type MCPTool = {
 };
 
 const BRAND_MCP_TOOLS: Record<string, MCPTool[]> = {
-  amazon: [{ name: 'amazon_get_purchase_history' }],
+  amazon: [{ name: 'amazon_dpage_get_purchase_history' }],
   amazonca: [{ name: 'amazonca_get_purchase_history' }],
   officedepot: [
     { name: 'officedepot_get_order_history' },
@@ -45,17 +45,20 @@ const BRAND_MCP_TOOLS: Record<string, MCPTool[]> = {
   ],
 };
 
+const MCP_URL_PATHS: Record<string, string> = {
+  amazon: 'mcp-shopping',
+  amazonca: 'mcp-shopping',
+};
+
 export class MCPService {
   private static instance: MCPService | null = null;
   private client: Record<string, Client | null> = {};
   private initPromise: Promise<Client> | null = null;
   private serverUrl: string;
-  private mcpUrl: string;
   private clientIpAddresses: Map<string, string> = new Map();
 
   private constructor() {
     this.serverUrl = settings.GETGATHER_URL || 'http://localhost:8000';
-    this.mcpUrl = `${this.serverUrl}/mcp/`;
     this.clientIpAddresses = new Map();
   }
 
@@ -66,8 +69,12 @@ export class MCPService {
     return MCPService.instance;
   }
 
-  private async initializeClient(sessionId: string): Promise<Client> {
-    if (this.client[sessionId]) return this.client[sessionId];
+  private async initializeClient(
+    sessionId: string,
+    brandId: string
+  ): Promise<Client> {
+    const mcpClientKey = `${sessionId}-${brandId}`;
+    if (this.client[mcpClientKey]) return this.client[mcpClientKey];
     if (this.initPromise) return this.initPromise;
 
     this.initPromise = (async () => {
@@ -83,20 +90,23 @@ export class MCPService {
       }
 
       console.log('Setup MCP client with location: ', location);
+
+      const mcpUrlPath = MCP_URL_PATHS[brandId] ?? 'mcp';
       const transport = new StreamableHTTPClientTransport(
-        new URL(this.mcpUrl),
+        new URL(`${this.serverUrl}/${mcpUrlPath}/`),
         {
           requestInit: {
             headers: {
               'x-getgather-custom-app': 'return-reminder',
               'x-location': location ? JSON.stringify(location) : '',
+              'x-incognito': '1',
             },
           },
         }
       );
       await client.connect(transport);
 
-      this.client[sessionId] = client;
+      this.client[mcpClientKey] = client;
       Logger.info('MCP client initialized successfully');
       return client;
     })();
@@ -108,16 +118,20 @@ export class MCPService {
     }
   }
 
-  private async resetAndInitializeClient(sessionId: string): Promise<Client> {
+  private async resetAndInitializeClient(
+    sessionId: string,
+    brandId: string
+  ): Promise<Client> {
+    const mcpClientKey = `${sessionId}-${brandId}`;
     try {
-      if (this.client[sessionId]) {
-        await this.client[sessionId].close().catch(() => {});
+      if (this.client[mcpClientKey]) {
+        await this.client[mcpClientKey].close().catch(() => {});
       }
     } finally {
-      this.client[sessionId] = null;
+      this.client[mcpClientKey] = null;
     }
 
-    return this.initializeClient(sessionId);
+    return this.initializeClient(sessionId, brandId);
   }
 
   private async callToolWithReconnect(
@@ -125,14 +139,16 @@ export class MCPService {
       name: string;
       arguments?: Record<string, unknown>;
       sessionId: string;
+      brandId: string;
     },
     resultSchema?:
       | typeof CallToolResultSchema
       | typeof CompatibilityCallToolResultSchema,
     options?: RequestOptions
   ) {
+    const { sessionId, brandId } = params;
     try {
-      const client = await this.getClient(params.sessionId);
+      const client = await this.getClient(sessionId, brandId);
       return await client.callTool(params, resultSchema, options);
     } catch (err) {
       Logger.warn('MCP call tool failed, reconnecting', {
@@ -142,20 +158,21 @@ export class MCPService {
         sessionId: params.sessionId,
         error: err instanceof Error ? err.message : String(err),
       });
-      await this.resetAndInitializeClient(params.sessionId);
-      const client = await this.getClient(params.sessionId);
+      await this.resetAndInitializeClient(params.sessionId, params.brandId);
+      const client = await this.getClient(params.sessionId, params.brandId);
       return await client.callTool(params, resultSchema, options);
     }
   }
 
-  async getClient(sessionId: string): Promise<Client> {
-    if (!this.client[sessionId]) {
-      await this.initializeClient(sessionId);
+  async getClient(sessionId: string, brandId: string): Promise<Client> {
+    const mcpClientKey = `${sessionId}-${brandId}`;
+    if (!this.client[mcpClientKey]) {
+      await this.initializeClient(sessionId, brandId);
     }
-    if (!this.client[sessionId]) {
+    if (!this.client[mcpClientKey]) {
       throw new Error('MCP client initialization failed');
     }
-    return this.client[sessionId];
+    return this.client[mcpClientKey];
   }
 
   getMCPTools(brandId: string): MCPTool[] {
@@ -190,6 +207,7 @@ export class MCPService {
             name: tools[i].name,
             arguments: argSet,
             sessionId: sessionId,
+            brandId: brandId,
           });
 
           Logger.debug('MCP tool response received', {
@@ -243,7 +261,7 @@ export class MCPService {
     }
   }
 
-  async pollSignin(linkId: string, sessionId: string) {
+  async pollSignin(linkId: string, sessionId: string, brandId: string) {
     Logger.debug('Polling auth status', { linkId, sessionId });
 
     const result = await this.callToolWithReconnect(
@@ -251,6 +269,7 @@ export class MCPService {
         name: 'poll_signin',
         arguments: { link_id: linkId },
         sessionId: sessionId,
+        brandId: brandId,
       },
       undefined,
       {
@@ -260,6 +279,53 @@ export class MCPService {
     );
 
     return result.structuredContent;
+  }
+
+  async getDpageUrl(brandId: string, sessionId: string) {
+    const tools = this.getMCPTools(brandId);
+    const result = await this.callToolWithReconnect({
+      name: tools[0].name,
+      sessionId: sessionId,
+      brandId: brandId,
+    });
+
+    return result.structuredContent as Record<string, string>;
+  }
+
+  async checkDpageSignin(signinId: string, sessionId: string, brandId: string) {
+    const result = await this.callToolWithReconnect(
+      {
+        name: 'check_signin',
+        arguments: { signin_id: signinId },
+        sessionId,
+        brandId,
+      },
+      undefined,
+      {
+        timeout: 6000000,
+        maxTotalTimeout: 6000000,
+      }
+    );
+
+    const response = result.structuredContent as {
+      status?: string;
+      result?: unknown;
+    };
+
+    const isAuthCompleted = response?.status === 'SUCCESS';
+
+    let purchases = null;
+
+    if (typeof response.result === 'string') {
+      purchases = JSON.parse(response.result);
+    } else {
+      purchases = response.result || [];
+    }
+
+    return {
+      status: isAuthCompleted ? 'FINISHED' : 'PENDING',
+      purchases,
+    } as Record<string, unknown>;
   }
 
   setClientIpAddress(sessionId: string, ipAddress: string) {

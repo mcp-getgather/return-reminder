@@ -27,15 +27,20 @@ export function DataSource({
   const handleConnect = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/internal/mcp/retrieve-data', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          brand_id: brandConfig.brand_id,
-        }),
-      });
+      const response = await fetch(
+        brandConfig.is_dpage
+          ? '/internal/mcp/dpage-url'
+          : '/internal/mcp/retrieve-data',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            brand_id: brandConfig.brand_id,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
