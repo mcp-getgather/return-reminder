@@ -32,9 +32,6 @@ const BRANDS: Array<BrandConfig> = [
 
 const EXCLUDED_BRANDS: Array<string> = [
   nordstromConfig.brand_id,
-  // NOTE: temporarily excluded wayfair brand due to this issue:
-  // https://github.com/mcp-getgather/private-issues/issues/76
-  wayfairConfig.brand_id,
 ];
 
 export function ReturnReminder() {
