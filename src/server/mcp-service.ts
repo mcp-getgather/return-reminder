@@ -31,23 +31,13 @@ const BRAND_MCP_TOOLS: Record<string, MCPTool[]> = {
       },
     },
   ],
-  wayfair: [
-    { name: 'wayfair_get_order_history' },
-    {
-      name: 'wayfair_get_order_history_details',
-      args: (results) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const orders = (results[0] as any)?.purchase_history || [];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return orders.map((order: any) => ({ order_id: order.order_id }));
-      },
-    },
-  ],
+  wayfair: [{ name: 'wayfair_dpage_get_order_history' }],
 };
 
 const MCP_URL_PATHS: Record<string, string> = {
   amazon: 'mcp-shopping',
   amazonca: 'mcp-shopping',
+  wayfair: 'mcp-shopping',
 };
 
 export class MCPService {
