@@ -318,6 +318,32 @@ export class MCPService {
     } as Record<string, unknown>;
   }
 
+  async finalizeSignin({
+    signinId,
+    sessionId,
+    brandId,
+  }: {
+    signinId: string;
+    sessionId: string;
+    brandId: string;
+  }) {
+    const result = await this.callToolWithReconnect(
+      {
+        name: 'finalize_signin',
+        arguments: { signin_id: signinId },
+        sessionId: sessionId,
+        brandId: brandId,
+      },
+      undefined,
+      {
+        timeout: 6000000,
+        maxTotalTimeout: 6000000,
+      }
+    );
+
+    return result;
+  }
+
   setClientIpAddress(sessionId: string, ipAddress: string) {
     this.clientIpAddresses.set(sessionId, ipAddress);
   }

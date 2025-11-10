@@ -299,6 +299,43 @@ app.post('/internal/mcp/dpage-signin-check', async (req, res) => {
   }
 });
 
+app.post('/internal/mcp/dpage-finalize-signin', async (req, res) => {
+  try {
+    const { signin_id, brand_id } = req.body;
+
+    if (!signin_id) {
+      res.status(400).json({
+        success: false,
+        error: 'signin_id is required',
+      });
+
+      return;
+    }
+
+    await mcpService.finalizeSignin({
+      signinId: signin_id,
+      sessionId: req.sessionID,
+      brandId: brand_id,
+    });
+
+    res.json({
+      success: true,
+    });
+  } catch (error) {
+    Logger.error('MCP dpage finalize signin error:', error as Error, {
+      component: 'server',
+      operation: 'dpage-finalize-signin',
+      signinId: req.body.signin_id,
+      brandId: req.body.brand_id,
+      sessionId: req.sessionID,
+    });
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
 // Endpoint to receive order logs from the client and print them on the server console
 app.post('/log-orders', (req, res) => {
   Logger.info('Received orders from client', {
