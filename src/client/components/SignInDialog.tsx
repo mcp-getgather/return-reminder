@@ -62,22 +62,28 @@ export function SignInDialog({
 
           while (attempts < maxAttempts) {
             try {
-              const response = await fetch('/internal/mcp/poll-auth', {
-                method: 'POST',
-                headers: {
-                  accept: 'application/json',
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  link_id: linkId,
-                }),
-              });
+              const response = await fetch(
+                brandConfig.is_dpage
+                  ? '/internal/mcp/dpage-signin-check'
+                  : '/internal/mcp/poll-auth',
+                {
+                  method: 'POST',
+                  headers: {
+                    accept: 'application/json',
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    link_id: linkId,
+                    brand_id: brandConfig.brand_id,
+                  }),
+                }
+              );
 
               if (response.ok) {
                 const result = await response.json();
 
                 if (result.success && result.data?.status === 'FINISHED') {
-                  return true;
+                  return { success: true, purchases: result.data?.purchases };
                 }
               }
             } catch (error) {
@@ -90,6 +96,31 @@ export function SignInDialog({
 
           throw new Error('Authentication timed out. Please try again.');
         };
+        if (brandConfig.is_dpage) {
+          pollForAuth()
+            .then(({ purchases }) => {
+              setLoadingState('RETRIEVING_DATA');
+              // Transform the data on the client side
+              const transformedData = transformData(
+                { purchases },
+                brandConfig.dataTransform
+              ) as PurchaseHistory[];
+
+              onSuccessConnect(transformedData);
+              onClose();
+              setLoadingState(null);
+            })
+            .catch((error) => {
+              console.error('Authentication flow failed:', error);
+              setPollingError(
+                error.message || 'Authentication failed. Please try again.'
+              );
+              setIsPolling(false);
+              setLoadingState(null);
+            });
+
+          return;
+        }
 
         // Execute the polling and data retrieval flow
         pollForAuth()
