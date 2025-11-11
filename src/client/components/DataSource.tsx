@@ -95,11 +95,34 @@ export function DataSource({
     }
   };
 
+  const onFinalizeSignin = ({
+    signinId,
+    brandId,
+  }: {
+    signinId: string;
+    brandId: string;
+  }) => {
+    fetch('/internal/mcp/dpage-finalize-signin', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        signin_id: signinId,
+        brand_id: brandId,
+      }),
+    });
+  };
+
   const handleSuccessConnect = (data: PurchaseHistory[]) => {
     setIsDialogOpen(false);
     setLinkId(null);
     setIsLoading(false);
     onSuccessConnect(data);
+
+    if (brandConfig.is_dpage && linkId) {
+      onFinalizeSignin({ signinId: linkId, brandId: brandConfig.brand_id });
+    }
   };
 
   return (
