@@ -16,7 +16,7 @@ type MCPTool = {
 
 const BRAND_MCP_TOOLS: Record<string, MCPTool[]> = {
   amazon: [{ name: 'amazon_dpage_get_purchase_history' }],
-  amazonca: [{ name: 'amazonca_get_purchase_history' }],
+  amazonca: [{ name: 'amazonca_dpage_get_purchase_history' }],
   officedepot: [
     { name: 'officedepot_get_order_history' },
     {
