@@ -22,6 +22,8 @@ export type DataFieldMapping = {
   formatTemplate?: string;
   /** Regex pattern for extract transform - first capture group will be extracted */
   extractPattern?: string;
+  /** Convert the value to an array */
+  convertToArray?: boolean;
 };
 
 export type DataTransformSchema = {
@@ -70,6 +72,16 @@ function getNestedValue(obj: any, path: string): any {
   }, obj);
 }
 
+export function parseOrderDate(orderDateStr: string) {
+  // Match pattern like "Ordered On: June 4, 2025Wayfair Order #4325262636"
+  const orderMatch = orderDateStr.match(/Ordered On:\s*(\w+ \d+, \d+)/i);
+  if (orderMatch) {
+    return new Date(orderMatch[1]);
+  }
+
+  return null;
+}
+
 function parseReturnDate(returnDateStr: string) {
   // Match patterns like "closed on July 1, 2025" or "Eligible through July 12, 2025"
   const closedMatch = returnDateStr.match(/closed on (\w+ \d+, \d+)/i);
@@ -93,8 +105,11 @@ function parseReturnDate(returnDateStr: string) {
 function applyTransform(
   value: any,
   mapping: DataFieldMapping
-): string | string[] | Date | null {
+): string | (string | Date)[] | Date | null {
   if (value === undefined || value === null) {
+    if (mapping.convertToArray) {
+      return [mapping.defaultValue || ''];
+    }
     return mapping.defaultValue || '';
   }
 
@@ -107,74 +122,112 @@ function applyTransform(
     }
   }
 
-  switch (mapping.transform) {
-    case 'currency':
-      if (
-        typeof processedValue === 'object' &&
-        processedValue.currency &&
-        processedValue.amount
-      ) {
-        const template = mapping.formatTemplate || '{symbol}{amount}';
-        return template
-          .replace('{symbol}', processedValue.currency.symbol || '$')
-          .replace('{amount}', processedValue.amount || '0.00');
-      }
-      return String(processedValue);
-
-    case 'string':
-      if (mapping.formatTemplate) {
-        if (mapping.formatTemplate.includes('{value}')) {
-          return mapping.formatTemplate.replace(
-            '{value}',
-            String(processedValue)
-          );
+  const getValue = () => {
+    switch (mapping.transform) {
+      case 'currency':
+        if (
+          typeof processedValue === 'object' &&
+          processedValue.currency &&
+          processedValue.amount
+        ) {
+          const template = mapping.formatTemplate || '{symbol}{amount}';
+          return template
+            .replace('{symbol}', processedValue.currency.symbol || '$')
+            .replace('{amount}', processedValue.amount || '0.00');
         }
-        if (mapping.formatTemplate.includes('${value}')) {
-          return mapping.formatTemplate.replace(
-            '${value}',
-            String(processedValue)
-          );
-        }
-      }
-      return String(processedValue);
+        return String(processedValue);
 
-    case 'image':
-      // Handle array of images
-      if (Array.isArray(processedValue)) {
-        return processedValue
-          .filter((img) => img && typeof img === 'string')
-          .map(String);
-      }
-      return String(processedValue);
-
-    case 'date':
-      if (Array.isArray(processedValue)) {
-        return processedValue.map((v) => {
-          if (typeof v === 'string') {
-            return parseReturnDate(v);
+      case 'string':
+        if (mapping.formatTemplate) {
+          if (mapping.formatTemplate.includes('{value}')) {
+            return mapping.formatTemplate.replace(
+              '{value}',
+              String(processedValue)
+            );
           }
-          return v;
-        });
-      }
-      if (!processedValue) {
-        return null;
-      }
+          if (mapping.formatTemplate.includes('${value}')) {
+            return mapping.formatTemplate.replace(
+              '${value}',
+              String(processedValue)
+            );
+          }
+        }
+        return String(processedValue);
 
-      if (typeof processedValue === 'object' && processedValue.displayDate) {
-        return String(processedValue.displayDate);
-      }
-      return new Date(processedValue);
-    case 'array':
-      if (Array.isArray(processedValue)) {
-        return processedValue.map(String);
-      }
-      return [String(processedValue)];
-    default:
-      if (Array.isArray(processedValue)) {
-        return processedValue.map(String);
-      }
-      return String(processedValue);
+      case 'image':
+        // Handle array of images
+        if (Array.isArray(processedValue)) {
+          return processedValue
+            .filter((img) => img && typeof img === 'string')
+            .map(String);
+        }
+        return String(processedValue);
+
+      case 'date':
+        if (Array.isArray(processedValue)) {
+          return processedValue.map((v) => {
+            if (typeof v === 'string') {
+              const orderDateParsed = parseOrderDate(v);
+              if (orderDateParsed) {
+                return orderDateParsed;
+              }
+
+              const returnDateParsed = parseReturnDate(v);
+              if (returnDateParsed) {
+                return returnDateParsed;
+              }
+
+              return new Date(v);
+            }
+            return v;
+          });
+        }
+
+        if (typeof processedValue === 'string') {
+          const orderDateParsed = parseOrderDate(processedValue);
+          if (orderDateParsed) {
+            return orderDateParsed;
+          }
+
+          const returnDateParsed = parseReturnDate(processedValue);
+          if (returnDateParsed) {
+            return returnDateParsed;
+          }
+
+          return new Date(processedValue);
+        }
+
+        if (!processedValue) {
+          return null;
+        }
+
+        if (typeof processedValue === 'object' && processedValue.displayDate) {
+          return String(processedValue.displayDate);
+        }
+        return new Date(processedValue);
+      case 'array':
+        if (Array.isArray(processedValue)) {
+          return processedValue.map(String);
+        }
+        return [String(processedValue)];
+      default:
+        if (Array.isArray(processedValue)) {
+          return processedValue.map(String);
+        }
+        return String(processedValue);
+    }
+  };
+
+  const result = getValue();
+  if (!result) {
+    return result;
   }
+
+  if (mapping.convertToArray) {
+    return Array.isArray(result) ? result : [result];
+  }
+
+  return result;
 }
 
 /**
