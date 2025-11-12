@@ -32,6 +32,8 @@ const BRANDS: Array<BrandConfig> = [
 
 const EXCLUDED_BRANDS: Array<string> = [
   nordstromConfig.brand_id,
+  // NOTE: exclude officedepot for now until successfully migrated to dpage
+  officedepotConfig.brand_id,
 ];
 
 export function ReturnReminder() {
